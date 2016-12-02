@@ -23,13 +23,10 @@ import (
 	"github.com/skycoin/skycoin/src/visor/blockdb"
 )
 
-//"github.com/skycoin/skycoin/src/cli"
-
-//"github.com/skycoin/skycoin/src/wallet"
-
 var (
 	logger     = logging.MustGetLogger("main")
-	logFormat  = "[skycion.%{module}:%{level}] %{message}"
+	coinName   = "shellcoin"
+	logFormat  = "[shellcoin.%{module}:%{level}] %{message}"
 	logModules = []string{
 		"main",
 		"daemon",
@@ -44,9 +41,9 @@ var (
 	}
 
 	//TODO: Move time and other genesis block settigns from visor, to here
-	GenesisSignatureStr = "eb10468d10054d15f2b6f8946cd46797779aa20a7617ceb4be884189f219bc9a164e56a5b9f7bec392a804ff3740210348d73db77a37adb542a8e08d429ac92700"
-	GenesisAddressStr   = "2jBbGxZRGoQG1mqhPBnXnLTxK6oxsTf8os6"
-	BlockchainPubkeyStr = "0328c576d3f420e7682058a981173a4b374c7cc5ff55bf394d3cf57059bbe6456a"
+	GenesisSignatureStr = ""
+	GenesisAddressStr   = ""
+	BlockchainPubkeyStr = ""
 	BlockchainSeckeyStr = ""
 
 	GenesisTimestamp  uint64 = 1426562704
@@ -56,10 +53,10 @@ var (
 	//GenesisCoinVolume: 100e12, //100e6 * 10e6
 
 	DefaultConnections = []string{
-		"13.76.90.237:6000",
-		"40.74.142.139:6000",
-		"188.226.245.87:6000",
-		"40.74.80.119:6000",
+	// "13.76.90.237:6000",
+	// "40.74.142.139:6000",
+	// "188.226.245.87:6000",
+	// "40.74.80.119:6000",
 	}
 )
 
@@ -172,7 +169,7 @@ func (c *Config) register() {
 	flag.BoolVar(&c.PrintWebInterfaceAddress, "print-web-interface-address",
 		c.PrintWebInterfaceAddress, "print configured web interface address and exit")
 	flag.StringVar(&c.DataDirectory, "data-dir", c.DataDirectory,
-		"directory to store app data (defaults to ~/.skycoin)")
+		fmt.Sprintf("directory to store app data (defaults to ~/.%s)", coinName))
 	flag.StringVar(&c.ConnectTo, "connect-to", c.ConnectTo,
 		"connect to this ip only")
 	flag.BoolVar(&c.ProfileCPU, "profile-cpu", c.ProfileCPU,
@@ -205,12 +202,12 @@ func (c *Config) register() {
 		"genesis block timestamp")
 
 	flag.StringVar(&c.WalletDirectory, "wallet-dir", c.WalletDirectory,
-		"location of the wallet files. Defaults to ~/.skycoin/wallet/")
+		fmt.Sprintf("location of the wallet files. Defaults to ~/.%s/wallet/", coinName))
 
 	flag.StringVar(&c.BlockchainFile, "blockchain-file", c.BlockchainFile,
-		"location of the blockchain file. Default to ~/.skycoin/blockchain.bin")
+		fmt.Sprintf("location of the blockchain file. Default to ~/.%s/blockchain.bin", coinName))
 	flag.StringVar(&c.BlockSigsFile, "blocksigs-file", c.BlockSigsFile,
-		"location of the block signatures file. Default to ~/.skycoin/blockchain.sigs")
+		fmt.Sprintf("location of the block signatures file. Default to ~/.%s/blockchain.sigs", coinName))
 
 	flag.DurationVar(&c.OutgoingConnectionsRate, "connection-rate",
 		c.OutgoingConnectionsRate, "How often to make an outgoing connection")
@@ -252,7 +249,7 @@ var devConfig Config = Config{
 	PrintWebInterfaceAddress: false,
 	LaunchBrowser:            true,
 	// Data directory holds app data -- defaults to ~/.skycoin
-	DataDirectory: ".skycoin",
+	DataDirectory: fmt.Sprintf(".%s", coinName),
 	// Web GUI static resources
 	GUIDirectory: "./src/gui/static/",
 	// Logging
@@ -279,7 +276,7 @@ var devConfig Config = Config{
 	// Enable cpu profiling
 	ProfileCPU: false,
 	// Where the file is written to
-	ProfileCPUFile: "skycoin.prof",
+	ProfileCPUFile: fmt.Sprintf("%s.prof", coinName),
 	// HTTP profiling interface (see http://golang.org/pkg/net/http/pprof/)
 	HTTPProf: false,
 	// Will force it to connect to this ip:port, instead of waiting for it
@@ -505,7 +502,7 @@ func Run(c *Config) {
 		var err error
 		if c.WebInterfaceHTTPS {
 			// Verify cert/key parameters, and if neither exist, create them
-			errs := util.CreateCertIfNotExists(host, c.WebInterfaceCert, c.WebInterfaceKey, "Skycoind")
+			errs := util.CreateCertIfNotExists(host, c.WebInterfaceCert, c.WebInterfaceKey, "Shellcoind")
 			if len(errs) != 0 {
 				for _, err := range errs {
 					logger.Error(err.Error())
@@ -558,18 +555,6 @@ func Run(c *Config) {
 }
 
 func main() {
-
-	/*
-		skycoin.Run(&cli.DaemonArgs)
-	*/
-
-	/*
-	   skycoin.Run(&cli.ClientArgs)
-	   stop := make(chan int)
-	   <-stop
-	*/
-
-	//skycoin.Run(&cli.DevArgs)
 	devConfig.Parse()
 	Run(&devConfig)
 }
