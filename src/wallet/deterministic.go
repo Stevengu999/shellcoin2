@@ -26,34 +26,62 @@ type Wallet struct {
 
 var version = "0.1"
 
+// Option NewWallet optional arguments type
+type Option func(w *Wallet)
+
 // NewWallet generates Deterministic Wallet
 // generates a random seed if seed is ""
-func NewWallet(seed, wltName, label string) Wallet {
-	//if seed is blank, generate a new seed
-	if seed == "" {
-		seedRaw := cipher.SumSHA256(secp256k1.RandByte(64))
-		seed = hex.EncodeToString(seedRaw[:])
-	}
+func NewWallet(wltName string, opts ...Option) Wallet {
+	seedRaw := cipher.SumSHA256(secp256k1.RandByte(64))
+	seed := hex.EncodeToString(seedRaw[:])
 
-	// generate the first address.
-	// pub, sec := cipher.GenerateDeterministicKeyPair([]byte(seed[:]))
-	return Wallet{
+	w := Wallet{
 		Meta: map[string]string{
 			"filename": wltName,
 			"version":  version,
-			"label":    label,
+			"label":    "",
 			"seed":     seed,
 			"lastSeed": seed,
 			"tm":       fmt.Sprintf("%v", time.Now().Unix()),
 			"type":     "deterministic",
 			"coin":     "sky"},
 	}
+
+	for _, opt := range opts {
+		opt(&w)
+	}
+
+	return w
+}
+
+// OptCoin NewWallet function's optional argument
+func OptCoin(coin string) Option {
+	return func(w *Wallet) {
+		w.Meta["coin"] = coin
+	}
+}
+
+// OptLabel NewWallet function's optional argument
+func OptLabel(label string) Option {
+	return func(w *Wallet) {
+		w.Meta["label"] = label
+	}
+}
+
+// OptSeed NewWallet function's optional argument
+func OptSeed(sd string) Option {
+	return func(w *Wallet) {
+		if sd != "" {
+			w.Meta["seed"] = sd
+			w.Meta["lastSeed"] = sd
+		}
+	}
 }
 
 func Load(wltFile string) (*Wallet, error) {
 	// check file's existence
 	if _, err := os.Stat(wltFile); os.IsNotExist(err) {
-		return nil, err
+		return nil, fmt.Errorf("load wallet file failed, %v", err)
 	}
 	wlt := Wallet{
 		Meta: make(map[string]string),
@@ -64,7 +92,7 @@ func Load(wltFile string) (*Wallet, error) {
 		return nil, err
 	}
 	if err := wlt.Load(dir); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load wallet file failed, %v", err)
 	}
 	return &wlt, nil
 }
@@ -102,13 +130,13 @@ func (wlt Wallet) Validate() error {
 		return errors.New("wallet type invalid")
 	}
 
-	coinType, ok := wlt.Meta["coin"]
-	if !ok {
+	// coinType, ok := wlt.Meta["coin"]
+	if _, ok := wlt.Meta["coin"]; !ok {
 		return errors.New("coin field not set")
 	}
-	if coinType != "sky" {
-		return errors.New("coin type invalid")
-	}
+	// if coinType != "sky" {
+	// 	return errors.New("coin type invalid")
+	// }
 
 	return nil
 
@@ -229,6 +257,7 @@ func (wlt *Wallet) Load(dir string) error {
 	if err := r.Load(filepath.Join(dir, wlt.GetFilename())); err != nil {
 		return err
 	}
+	r.Meta["filename"] = wlt.GetFilename()
 	*wlt = NewWalletFromReadable(r)
 	return nil
 }

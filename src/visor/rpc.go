@@ -25,45 +25,6 @@ type TransactionResults struct {
 
 type RPC struct{}
 
-/*
-func (self RPC) GetWalletBalance(v *Visor,
-	walletID wallet.WalletID) *wallet.BalancePair {
-	bp := v.WalletBalance(walletID)
-	return &bp
-}
-
-func (self RPC) ReloadWallets(v *Visor) error {
-	return v.ReloadWallets()
-}
-
-func (self RPC) SaveWallet(v *Visor, walletID wallet.WalletID) error {
-	return v.SaveWallet(walletID)
-}
-
-func (self RPC) SaveWallets(v *Visor) map[wallet.WalletID]error {
-	return v.SaveWallets()
-}
-
-func (self RPC) CreateWallet(v *Visor, seed string) *wallet.ReadableWallet {
-	w := v.CreateWallet()
-	return wallet.NewReadableWallet(w)
-}
-
-func (self RPC) GetWallet(v *Visor,
-	walletID wallet.WalletID) *wallet.ReadableWallet {
-	w := v.Wallets.Get(walletID)
-	if w == nil {
-		return nil
-	} else {
-		return wallet.NewReadableWallet(w)
-	}
-}
-
-func (self RPC) GetWallets(v *Visor) []*wallet.ReadableWallet {
-	return v.Wallets.ToPublicReadable()
-}
-*/
-
 func (self RPC) GetBlockchainMetadata(v *Visor) *BlockchainMetadata {
 	bm := v.GetBlockchainMetadata()
 	return &bm
@@ -74,8 +35,8 @@ func (self RPC) GetUnspentOutputReadables(v *Visor) []ReadableOutput {
 	return ret
 }
 
-func (self RPC) GetWalletTransactions(v *Visor, addresses []cipher.Address) []ReadableUnconfirmedTxn {
-	ret := v.GetWalletTransactions(addresses)
+func (self RPC) GetUnconfirmedTxns(v *Visor, addresses []cipher.Address) []ReadableUnconfirmedTxn {
+	ret := v.GetUnconfirmedTxns(addresses)
 	return ret
 }
 
@@ -90,6 +51,14 @@ func (self RPC) GetBlock(v *Visor, seq uint64) *ReadableBlock {
 func (self RPC) GetBlocks(v *Visor, start, end uint64) *ReadableBlocks {
 	blocks := v.GetReadableBlocks(start, end)
 	return &ReadableBlocks{blocks}
+}
+
+func (self RPC) GetBlockInDepth(v *Visor, n uint64) *ReadableBlock {
+	if b := v.GetBlockBySeq(n); b != nil {
+		block := NewReadableBlock(b)
+		return &block
+	}
+	return nil
 }
 
 func (self RPC) GetTransaction(v *Visor, txHash cipher.SHA256) (*TransactionResult, error) {

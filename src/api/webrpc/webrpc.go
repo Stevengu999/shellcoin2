@@ -3,7 +3,7 @@ package webrpc
 import (
 	"net/http"
 
-	logging "github.com/op/go-logging"
+	"github.com/skycoin/skycoin/src/util"
 
 	"encoding/json"
 
@@ -32,7 +32,7 @@ var (
 	jsonRPC = "2.0"
 )
 
-var logger = logging.MustGetLogger("webrpc")
+var logger = util.MustGetLogger("webrpc")
 
 // Request rpc request struct
 type Request struct {
@@ -98,11 +98,12 @@ func makeErrorResponse(code int, message string) Response {
 }
 
 // Start start the webrpc service.
-func Start(addr string, queueSize uint, workerNum uint, gateway Gatewayer, c chan struct{}) {
-	rpc := makeRPC(queueSize, workerNum, gateway, c)
+// func Start(addr string, queueSize uint, workerNum uint, gateway Gatewayer, c chan struct{}) {
+func Start(addr string, args ...Arg) {
+	rpc := makeRPC(args...)
 	for {
 		select {
-		case <-c:
+		case <-rpc.close:
 			logger.Info("webrpc quit")
 			return
 		default:
@@ -112,16 +113,27 @@ func Start(addr string, queueSize uint, workerNum uint, gateway Gatewayer, c cha
 	}
 }
 
-func makeRPC(queueSize uint, workerNum uint, gateway Gatewayer, c chan struct{}) *rpcHandler {
-	rpc := newRPCHandler(queueSize, workerNum, gateway, c)
+// func makeRPC(queueSize uint, workerNum uint, gateway Gatewayer, c chan struct{}) *rpcHandler {
+func makeRPC(args ...Arg) *rpcHandler {
+	rpc := newRPCHandler(args...)
 
 	// register handlers
+	// get service status
 	rpc.HandlerFunc("get_status", getStatusHandler)
+	// get blocks by seq
+	rpc.HandlerFunc("get_blocks_by_seq", getBlocksBySeqHandler)
+	// get last N blocks
 	rpc.HandlerFunc("get_lastblocks", getLastBlocksHandler)
+	// get blocks in specific seq range
 	rpc.HandlerFunc("get_blocks", getBlocksHandler)
+	// get unspent outputs of address
 	rpc.HandlerFunc("get_outputs", getOutputsHandler)
+	// get transaction by txid
 	rpc.HandlerFunc("get_transaction", getTransactionHandler)
+	// broadcast transaction
 	rpc.HandlerFunc("inject_transaction", injectTransactionHandler)
+	// get address affected uxouts
+	rpc.HandlerFunc("get_address_uxouts", getAddrUxOutsHandler)
 
 	return rpc
 }

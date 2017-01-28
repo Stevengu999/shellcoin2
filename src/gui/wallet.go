@@ -15,6 +15,7 @@ import (
 	"github.com/skycoin/skycoin/src/daemon"
 	"github.com/skycoin/skycoin/src/visor"
 	"github.com/skycoin/skycoin/src/wallet"
+	bip39 "github.com/tyler-smith/go-bip39"
 
 	wh "github.com/skycoin/skycoin/src/util/http" //http,json helpers
 )
@@ -35,23 +36,53 @@ This section is redundant
 type WalletRPC struct {
 	Wallets         wallet.Wallets
 	WalletDirectory string
+	Options         []wallet.Option
+}
+
+type NotesRPC struct {
+	Notes         wallet.Notes
+	WalletDirectory string
 }
 
 //use a global for now
 var Wg *WalletRPC
 
-func InitWalletRPC(walletDir string) {
-	Wg = NewWalletRPC(walletDir)
+var Ng *NotesRPC
+
+// InitWalletRPC init wallet rpc
+func InitWalletRPC(walletDir string, options ...wallet.Option) {
+	Wg = NewWalletRPC(walletDir, options...)
+	Ng = NewNotesRPC(walletDir)
 }
 
-func NewWalletRPC(walletDir string) *WalletRPC {
-	rpc := &WalletRPC{}
 
+// NewWalletRPC new wallet rpc
+func NewNotesRPC(walletDir string) *NotesRPC {
+	rpc := &NotesRPC{}
+	if err := os.MkdirAll(walletDir, os.FileMode(0700)); err != nil {
+		log.Panicf("Failed to create notes directory %s: %v", walletDir, err)
+	}
+	rpc.WalletDirectory = walletDir
+	w, err := wallet.LoadNotes(rpc.WalletDirectory)
+	if err != nil {
+		log.Panicf("Failed to load all notes: %v", err)
+	}
+	wallet.CreateNoteFileIfNotExist(walletDir)
+	rpc.Notes = w
+	return rpc
+}
+
+// NewWalletRPC new wallet rpc
+func NewWalletRPC(walletDir string, options ...wallet.Option) *WalletRPC {
+	rpc := &WalletRPC{}
 	if err := os.MkdirAll(walletDir, os.FileMode(0700)); err != nil {
 		log.Panicf("Failed to create wallet directory %s: %v", walletDir, err)
 	}
 
 	rpc.WalletDirectory = walletDir
+	for i := range options {
+		rpc.Options = append(rpc.Options, options[i])
+	}
 
 	w, err := wallet.LoadWallets(rpc.WalletDirectory)
 	if err != nil {
@@ -61,7 +92,7 @@ func NewWalletRPC(walletDir string) *WalletRPC {
 
 	if len(rpc.Wallets) == 0 {
 		wltName := wallet.NewWalletFilename()
-		rpc.CreateWallet("", wltName, "")
+		rpc.CreateWallet(wltName)
 
 		if err := rpc.SaveWallet(wltName); err != nil {
 			log.Panicf("Failed to save wallets to %s: %v", rpc.WalletDirectory, err)
@@ -99,8 +130,11 @@ func (self *WalletRPC) SaveWallets() map[string]error {
 	return self.Wallets.Save(self.WalletDirectory)
 }
 
-func (self *WalletRPC) CreateWallet(seed, wltName, label string) (wallet.Wallet, error) {
-	w := wallet.NewWallet(seed, wltName, label)
+func (self *WalletRPC) CreateWallet(wltName string, options ...wallet.Option) (wallet.Wallet, error) {
+	ops := make([]wallet.Option, 0, len(self.Options)+len(options))
+	ops = append(ops, self.Options...)
+	ops = append(ops, options...)
+	w := wallet.NewWallet(wltName, ops...)
 	// generate a default address
 	w.GenerateAddresses(1)
 
@@ -121,6 +155,10 @@ func (self *WalletRPC) GetWalletsReadable() []*wallet.ReadableWallet {
 	return self.Wallets.ToReadable()
 }
 
+func (self *NotesRPC) GetNotesReadable() wallet.ReadableNotes {
+	return self.Notes.ToReadable()
+}
+
 func (self *WalletRPC) GetWalletReadable(walletID string) *wallet.ReadableWallet {
 	if w, ok := self.Wallets.Get(walletID); ok {
 		return wallet.NewReadableWallet(w)
@@ -139,7 +177,7 @@ func (self *WalletRPC) GetWallet(walletID string) *wallet.Wallet {
 // NOT WORKING
 // actually uses visor
 func (self *WalletRPC) GetWalletBalance(v *visor.Visor,
-	walletID string) (wallet.BalancePair, error) {
+walletID string) (wallet.BalancePair, error) {
 
 	wlt, ok := self.Wallets.Get(walletID)
 	if !ok {
@@ -165,7 +203,7 @@ Checks if the wallet has pending, unconfirmed transactions
 */
 //Check if any of the outputs are spent
 func (self *WalletRPC) HasUnconfirmedTransactions(v *visor.Visor,
-	wallet *wallet.Wallet) bool {
+wallet *wallet.Wallet) bool {
 
 	if wallet == nil {
 		log.Panic("Wallet does not exist")
@@ -201,8 +239,8 @@ type SpendResult struct {
 // -- sign transaction
 // -- inject transaction
 func Spend(d *daemon.Daemon, v *daemon.Visor, wrpc *WalletRPC,
-	walletID string, amt wallet.Balance, fee uint64,
-	dest cipher.Address) *SpendResult {
+walletID string, amt wallet.Balance, fee uint64,
+dest cipher.Address) *SpendResult {
 
 	txn, err := Spend2(v.Visor, wrpc, walletID, amt, fee, dest)
 	errString := ""
@@ -240,7 +278,7 @@ func Spend(d *daemon.Daemon, v *daemon.Visor, wrpc *WalletRPC,
 // - create transaction here
 // - sign transction and return
 func Spend2(self *visor.Visor, wrpc *WalletRPC, walletID string, amt wallet.Balance,
-	fee uint64, dest cipher.Address) (coin.Transaction, error) {
+fee uint64, dest cipher.Address) (coin.Transaction, error) {
 
 	wallet, ok := wrpc.Wallets.Get(walletID)
 	if !ok {
@@ -392,6 +430,24 @@ func walletSpendHandler(gateway *daemon.Gateway) http.HandlerFunc {
 	}
 }
 
+
+// Create a wallet Name is set by creation date
+func notesCreate(gateway *daemon.Gateway) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("API request made to create a note")
+		note := r.FormValue("note")
+		transactionId := r.FormValue("transaction_id")
+		newNote := wallet.Note{
+			TransactionId:transactionId,
+			Value:note,
+		}
+		Ng.Notes.SaveNote(Ng.WalletDirectory, newNote)
+		rlt := Ng.GetNotesReadable()
+		wh.SendOr500(w, rlt)
+	}
+}
+
+
 // Create a wallet Name is set by creation date
 func walletCreate(gateway *daemon.Gateway) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -403,7 +459,7 @@ func walletCreate(gateway *daemon.Gateway) http.HandlerFunc {
 		var err error
 		// the wallet name may dup, rename it till no conflict.
 		for {
-			wlt, err = Wg.CreateWallet(seed, wltName, label)
+			wlt, err = Wg.CreateWallet(wltName, wallet.OptSeed(seed), wallet.OptLabel(label))
 			if err != nil && strings.Contains(err.Error(), "renaming") {
 				wltName = wallet.NewWalletFilename()
 				continue
@@ -499,13 +555,22 @@ func walletGet(gateway *daemon.Gateway) http.HandlerFunc {
 	}
 }
 
-// Returns JSON of pending transactions for user's wallet
+// Returns a wallet by ID if GET.  Creates or updates a wallet if POST.
+func notesHandler(gateway *daemon.Gateway) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		//ret := wallet.Wallets.ToPublicReadable()
+		ret := Ng.GetNotesReadable()
+		wh.SendOr404(w, ret)
+	}
+}
+
+// Returns JSON of unconfirmed transactions for user's wallet
 func walletTransactionsHandler(gateway *daemon.Gateway) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
 			wallet := Wg.GetWallet(r.FormValue("id"))
 			addresses := wallet.GetAddresses()
-			ret := gateway.Visor.GetWalletTransactions(gateway.V, addresses)
+			ret := gateway.Visor.GetUnconfirmedTxns(gateway.V, addresses)
 
 			wh.SendOr404(w, ret)
 		}
@@ -554,60 +619,63 @@ func walletsReloadHandler(gateway *daemon.Gateway) http.HandlerFunc {
 func getOutputsHandler(gateway *daemon.Gateway) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "GET" {
-			uxouts := gateway.Visor.GetUnspentOutputReadables(gateway.V)
-			rawaddrs := r.FormValue("addrs")
-			hashes := r.FormValue("hashes")
+			var addrs []string
+			var hashes []string
 
-			if rawaddrs == "" && hashes == "" {
-				wh.SendOr404(w, uxouts)
-				return
+			trimSpace := func(vs []string) []string {
+				for i := range vs {
+					vs[i] = strings.TrimSpace(vs[i])
+				}
+				return vs
 			}
 
-			addrMatch := []visor.ReadableOutput{}
-			if rawaddrs != "" {
-				addrs := strings.Split(rawaddrs, ",")
-				addrMap := make(map[string]bool)
-				for _, addr := range addrs {
-					addrMap[addr] = true
-				}
-
-				for _, u := range uxouts {
-					if _, ok := addrMap[u.Address]; ok {
-						addrMatch = append(addrMatch, u)
-					}
-				}
+			addrStr := r.FormValue("addrs")
+			if addrStr != "" {
+				addrs = trimSpace(strings.Split(addrStr, ","))
 			}
 
-			hsMatch := []visor.ReadableOutput{}
-			hsMatchMap := map[string]bool{}
-			if hashes != "" {
-				hs := strings.Split(hashes, ",")
-				hsMap := make(map[string]bool)
-				for _, h := range hs {
-					hsMap[h] = true
-				}
-
-				for _, u := range uxouts {
-					if _, ok := hsMap[u.Hash]; ok {
-						hsMatch = append(hsMatch, u)
-						hsMatchMap[u.Hash] = true
-					}
-				}
+			hashStr := r.FormValue("hashes")
+			if hashStr != "" {
+				hashes = trimSpace(strings.Split(hashStr, ","))
 			}
 
-			ret := []visor.ReadableOutput{}
-			if rawaddrs != "" && hashes != "" {
-				for _, u := range addrMatch {
-					if _, ok := hsMatchMap[u.Hash]; ok {
-						ret = append(ret, u)
-					}
-				}
-				wh.SendOr404(w, ret)
-				return
+			filters := []daemon.OutputsFilter{}
+			if len(addrs) > 0 {
+				filters = append(filters, daemon.FbyAddresses(addrs))
 			}
 
-			wh.SendOr404(w, append(addrMatch, hsMatch...))
+			if len(hashes) > 0 {
+				filters = append(filters, daemon.FbyHashes(hashes))
+			}
+
+			outs := gateway.GetUnspentOutputs(filters...)
+
+			wh.SendOr404(w, outs)
 		}
+	}
+}
+
+func newWalletSeed(gateway *daemon.Gateway) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		entropy, err := bip39.NewEntropy(128)
+		if err != nil {
+			wh.Error500(w)
+			return
+		}
+
+		mnemonic, err := bip39.NewMnemonic(entropy)
+		if err != nil {
+			wh.Error500(w)
+			return
+		}
+
+		var rlt = struct {
+			Seed string `json:"seed"`
+		}{
+			mnemonic,
+		}
+
+		wh.SendOr404(w, rlt)
 	}
 }
 
@@ -671,4 +739,11 @@ func RegisterWalletHandlers(mux *http.ServeMux, gateway *daemon.Gateway) {
 	// get balance of addresses
 	mux.HandleFunc("/balance", getBalanceHandler(gateway))
 
+	// generate wallet seed
+	mux.Handle("/wallet/newSeed", newWalletSeed(gateway))
+
+	// generate wallet seed
+	mux.Handle("/notes", notesHandler(gateway))
+
+	mux.Handle("/notes/create",notesCreate(gateway))
 }
