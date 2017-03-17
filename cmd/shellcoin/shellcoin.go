@@ -53,10 +53,8 @@ var (
 	//GenesisCoinVolume: 100e12, //100e6 * 10e6
 
 	DefaultConnections = []string{
-	// "13.76.90.237:6000",
-	// "40.74.142.139:6000",
-	// "188.226.245.87:6000",
-	// "40.74.80.119:6000",
+		"120.55.114.17:6100",
+		"119.23.146.83:6100",
 	}
 )
 
@@ -462,6 +460,7 @@ func Run(c *Config) {
 
 	logCfg := util.DevLogConfig(logModules)
 	logCfg.Format = logFormat
+	logCfg.Colors = c.ColorLog
 	logCfg.InitLogger()
 
 	// initLogging(c.LogLevel, c.ColorLog)
@@ -501,8 +500,7 @@ func Run(c *Config) {
 
 	// Debug only - forces connection on start.  Violates thread safety.
 	if c.ConnectTo != "" {
-		_, err := d.Pool.Pool.Connect(c.ConnectTo)
-		if err != nil {
+		if err := d.Pool.Pool.Connect(c.ConnectTo); err != nil {
 			log.Panic(err)
 		}
 	}
@@ -572,9 +570,11 @@ func Run(c *Config) {
 
 	<-quit
 	stopDaemon <- 1
-	close(closingC)
 
 	logger.Info("Shutting down")
+	gui.Shutdown()
+	close(closingC)
+
 	d.Shutdown()
 	logger.Info("Goodbye")
 }

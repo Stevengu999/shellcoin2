@@ -1,7 +1,10 @@
 {
     "name": "skycoin",
     "productName": "Skycoin",
-    "version": "0.8.1",
+    "author": "skycoin",
+    "main": "src/electron-main.js",
+    "version": "0.14.0",
+    "description": "skycoin wallet",
     "build": {
         "appId": "org.skycoin.skycoin",
         "nsis": {
@@ -26,13 +29,24 @@
                 "from": ".gox_output/${os}_${arch}",
                 "to": "./resources/app"
             }]
-        },
+        }, 
+         "files": [
+            "!**/*",
+            "src/**/*"
+        ],
         "extraResources": [{
             "from": "../src/gui/static/dist/",
+            "to": "./app/dist/",
+             "filter": [
+                "**/*",
+                "!current-skycoin.json"
+            ]
+        },
+          {
+            "from": "./skycoin/",
             "to": "./app/dist/"
         }],
         "directories": {
-            "app": "src",
             "output": "release"
         }
     },
@@ -42,11 +56,14 @@
         "dist-mac": "build -m --x64",
         "pack-mac": "build --dir -m"
     },
-    "dependencies": {
-        "electron-debug": "^1.0.1",
-        "electron-log": "^1.2.2"
-    },
     "devDependencies": {
-        "electron": "1.4.13"
+        "electron": "1.4.13",
+        "electron-packager": "^7.0.2",
+        "gulp": "^3.9.1",
+        "gulp-electron": "^0.1.3",
+        "electron-prebuilt": "^1.2.0"
+    },
+    "dependencies": {
+        "electron-log": "^1.2.2"
     }
 }
