@@ -1,16 +1,16 @@
-skycoin [![GoDoc](https://godoc.org/github.com/skycoin/skycoin?status.svg)](https://godoc.org/github.com/skycoin/skycoin) [![Go Report Card](https://goreportcard.com/badge/github.com/skycoin/skycoin)](https://goreportcard.com/report/github.com/skycoin/skycoin)
+shellcoin [![GoDoc](https://godoc.org/github.com/ShanghaiKuaibei/shellcoin2?status.svg)](https://godoc.org/github.com/ShanghaiKuaibei/shellcoin2) [![Go Report Card](https://goreportcard.com/badge/github.com/ShanghaiKuaibei/shellcoin2)](https://goreportcard.com/report/github.com/ShanghaiKuaibei/shellcoin2)
 =======
 
-Skycoin is a next-generation cryptocurrency.
+Shellcoin is a next-generation cryptocurrency.
 
-Skycoin improves on Bitcoin in too many ways to be addressed here.
+Shellcoin improves on Bitcoin in too many ways to be addressed here.
 
-Skycoin is small part of OP Redecentralize and OP Darknet Plan.
+Shellcoin is small part of OP Redecentralize and OP Darknet Plan.
 
 Installation
 ------------
 
-* For detailed installation instructions, see [Installing Skycoin](../../wiki/Installation)*
+* For detailed installation instructions, see [Installing Shellcoin](../../wiki/Installation)*
 
 ## For OSX:
 
@@ -37,14 +37,14 @@ $ export PATH=$PATH:$GOPATH/bin
 $ brew install mercurial bzr
 ```
 
-5) Fetch the latest code of skycoin from the github repository
+5) Fetch the latest code of shellcoin from the github repository
 ```
-$ go get github.com/skycoin/skycoin
+$ go get github.com/ShanghaiKuaibei/shellcoin
 ```
 
-6) Change your current directory to $GOPATH/src/github.com/skycoin/skycoin
+6) Change your current directory to $GOPATH/src/github.com/ShanghaiKuaibei/shellcoin2
 ```
-$ cd $GOPATH/src/github.com/skycoin/skycoin
+$ cd $GOPATH/src/github.com/ShanghaiKuaibei/shellcoin2
 ```
 
 7) Running Wallet
@@ -52,9 +52,9 @@ $ cd $GOPATH/src/github.com/skycoin/skycoin
 ```
 $ ./run.sh
 OR
-# go run ./cmd/skycoin/skycoin.go
+# go run ./cmd/shellcoin/shellcoin.go
 For Options
-# go run ./cmd/skycoin/skycoin.go --help
+# go run ./cmd/shellcoin/shellcoin.go --help
 ```
 
 ## For linux:
@@ -89,16 +89,16 @@ $ gvm use go1.7 >/dev/null
 ```
 
 
-The skycoin repo must be in $GOPATH, under `src/github.com/skycoin`. Otherwise golang programs cannot import the libraries.
+The shellcoin repo must be in $GOPATH, under `src/github.com/ShanghaiKuaibei`. Otherwise golang programs cannot import the libraries.
 
 ```
-#pull skycoin repo into the gopath
-#note: puts the skycoin folder in $GOPATH/src/github.com/skycoin/skycoin
-go get -v github.com/skycoin/skycoin/...
+#pull shellcoin repo into the gopath
+#note: puts the shellcoin folder in $GOPATH/src/github.com/ShanghaiKuaibei/shellcoin
+go get -v github.com/ShanghaiKuaibei/shellcoin/...
 
 #create symlink of the repo
 $ cd $HOME
-$ ln -s $GOPATH/src/github.com/skycoin/skycoin skycoin
+$ ln -s $GOPATH/src/github.com/ShanghaiKuaibei/shellcoin shellcoin
 ```
 
 Dependencies
@@ -117,13 +117,13 @@ If you change the dependencies, you should update them as needed with `gvt fetch
 
 Refer to the [gvt documentation](https://github.com/FiloSottile/gvt) or `gvt help` for further instructions.
 
-Running A Skycoin Node
+Running A Shellcoin Node
 ----------------------
 
 ```
-$ cd skycoin
+$ cd shellcoin
 $ screen
-$ go run ./cmd/skycoin/skycoin.go
+$ go run ./cmd/shellcoin/shellcoin.go
 #then ctrl+A then D to exit screen
 #screen -x to reattach screen
 ```
@@ -132,10 +132,10 @@ $ go run ./cmd/skycoin/skycoin.go
 
 Use gvm package set, so repo does not need to be symlinked. Does this have a default option?
 ```
-$ gvm pkgset create skycoin
-$ gvm pkgset use skycoin
-$ git clone https://github.com/skycoin/skycoin
-$ cd skycoin
+$ gvm pkgset create shellcoin
+$ gvm pkgset use shellcoin
+$ git clone https://github.com/ShanghaiKuaibei/shellcoin2
+$ cd shellcoin
 $ go install
 ```
 
@@ -149,13 +149,13 @@ $ go get github.com/mitchellh/gox
 Compile:
 ```
 $ gox --help
-$ gox [options] cmd/skycoin/
+$ gox [options] cmd/shellcoin/
 ```
 
 Local Server API
 ----------------
 
-Run the skycoin client then
+Run the shellcoin client then
 ```
 http://127.0.0.1:6420/wallets
 http://127.0.0.1:6420/outputs
@@ -179,17 +179,6 @@ http://127.0.0.1:6420/blockchain/blocks?start=0&end=5000 to see all blocks and t
 http://127.0.0.1:6420/network/connections to check network connections
 
 http://127.0.0.1:6420/blockchain to check blockchain head
-```
-
-Public API
-----------
-
-This is a public server. You can use these urls on local host too, with the skycoin client running.
-```
-http://skycoin-chompyz.c9.io/outputs
-http://skycoin-chompyz.c9.io/blockchain/blocks?start=0&end=500
-http://skycoin-chompyz.c9.io/blockchain
-http://skycoin-chompyz.c9.io/connections
 ```
 
 Modules
