@@ -41,7 +41,7 @@ var (
 	}
 
 	//TODO: Move time and other genesis block settigns from visor, to here
-	GenesisSignatureStr = ""
+	GenesisSignatureStr = "61fbc0ed2202590800d0eefb836e84b32df379eeaeb0647948fbc5371eac900c12cb5f916b4c849e763a4042c736516c2510351948295f2d86ea7955f01a3cae00"
 	GenesisAddressStr   = "zAF4Nq7bZaXWE5qEaSXmRS4DXxSiSrE9vK"
 	BlockchainPubkeyStr = "02af0b8addc4e0be5922e98a1d8ebd91cf5f034ccd8756f126f9714507fd178a78"
 	BlockchainSeckeyStr = ""
@@ -542,7 +542,7 @@ func Run(c *Config) {
 		}
 	}
 
-	if true {
+	if d.Visor.Visor.Blockchain.Head().Seq() < 2 {
 		time.Sleep(5)
 		tx := InitTransaction()
 		_ = tx
@@ -550,7 +550,6 @@ func Run(c *Config) {
 		if err != nil {
 			//	log.Panic(err)
 		}
-
 	}
 
 	/*
@@ -706,7 +705,6 @@ func InitTransaction() coin.Transaction {
 		seckeys[0] = cipher.MustSecKeyFromHex(seckey)
 		tx.SignInputs(seckeys)
 	} else {
-
 		txs := make([]cipher.Sig, 1)
 		sig := "712cf304a7b34dbcc234939b8dc4c78a893f1f5d4d9a4d53dac96f0fcee10cb5251c78aadc6c04c7013eacc50076afc8ae605256ba96d5feebc7952ae0f1ea9f00"
 		txs[0] = cipher.MustSigFromHex(sig)
