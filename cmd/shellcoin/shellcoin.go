@@ -42,11 +42,11 @@ var (
 
 	//TODO: Move time and other genesis block settigns from visor, to here
 	GenesisSignatureStr = ""
-	GenesisAddressStr   = ""
-	BlockchainPubkeyStr = ""
+	GenesisAddressStr   = "zAF4Nq7bZaXWE5qEaSXmRS4DXxSiSrE9vK"
+	BlockchainPubkeyStr = "02af0b8addc4e0be5922e98a1d8ebd91cf5f034ccd8756f126f9714507fd178a78"
 	BlockchainSeckeyStr = ""
 
-	GenesisTimestamp  uint64 = 1426562704
+	GenesisTimestamp  uint64 = 1489844528
 	GenesisCoinVolume uint64 = 100e12
 
 	//GenesisTimestamp: 1426562704,
@@ -542,15 +542,16 @@ func Run(c *Config) {
 		}
 	}
 
-	/*
+	if true {
 		time.Sleep(5)
 		tx := InitTransaction()
 		_ = tx
-		err, _ = d.Visor.Visor.InjectTxn(tx)
+		err, _ := d.Visor.Visor.InjectTxn(tx)
 		if err != nil {
-			log.Panic(err)
+			//	log.Panic(err)
 		}
-	*/
+
+	}
 
 	/*
 		//first transaction
@@ -586,130 +587,131 @@ func main() {
 
 //addresses for storage of coins
 var AddrList []string = []string{
-	"R6aHqKWSQfvpdo2fGSrq4F1RYXkBWR9HHJ",
-	"2EYM4WFHe4Dgz6kjAdUkM6Etep7ruz2ia6h",
-	"25aGyzypSA3T9K6rgPUv1ouR13efNPtWP5m",
-	"ix44h3cojvN6nqGcdpy62X7Rw6Ahnr3Thk",
-	"AYV8KEBEAPCg8a59cHgqHMqYHP9nVgQDyW",
-	"2Nu5Jv5Wp3RYGJU1EkjWFFHnebxMx1GjfkF",
-	"2THDupTBEo7UqB6dsVizkYUvkKq82Qn4gjf",
-	"tWZ11Nvor9parjg4FkwxNVcby59WVTw2iL",
-	"m2joQiJRZnj3jN6NsoKNxaxzUTijkdRoSR",
-	"8yf8PAQqU2cDj8Yzgz3LgBEyDqjvCh2xR7",
-	"sgB3n11ZPUYHToju6TWMpUZTUcKvQnoFMJ",
-	"2UYPbDBnHUEc67e7qD4eXtQQ6zfU2cyvAvk",
-	"wybwGC9rhm8ZssBuzpy5goXrAdE31MPdsj",
-	"JbM25o7kY7hqJZt3WGYu9pHZFCpA9TCR6t",
-	"2efrft5Lnwjtk7F1p9d7BnPd72zko2hQWNi",
-	"Syzmb3MiMoiNVpqFdQ38hWgffHg86D2J4e",
-	"2g3GUmTQooLrNHaRDhKtLU8rWLz36Beow7F",
-	"D3phtGr9iv6238b3zYXq6VgwrzwvfRzWZQ",
-	"gpqsFSuMCZmsjPc6Rtgy1FmLx424tH86My",
-	"2EUF3GPEUmfocnUc1w6YPtqXVCy3UZA4rAq",
-	"TtAaxB3qGz5zEAhhiGkBY9VPV7cekhvRYS",
-	"2fM5gVpi7XaiMPm4i29zddTNkmrKe6TzhVZ",
-	"ix3NDKgxfYYANKAb5kbmwBYXPrkAsha7uG",
-	"2RkPshpFFrkuaP98GprLtgHFTGvPY5e6wCK",
-	"Ak1qCDNudRxZVvcW6YDAdD9jpYNNStAVqm",
-	"2eZYSbzBKJ7QCL4kd5LSqV478rJQGb4UNkf",
-	"KPfqM6S96WtRLMuSy4XLfVwymVqivdcDoM",
-	"5B98bU1nsedGJBdRD5wLtq7Z8t8ZXio8u5",
-	"2iZWk5tmBynWxj2PpAFyiZzEws9qSnG3a6n",
-	"XUGdPaVnMh7jtzPe3zkrf9FKh5nztFnQU5",
-	"hSNgHgewJme8uaHrEuKubHYtYSDckD6hpf",
-	"2DeK765jLgnMweYrMp1NaYHfzxumfR1PaQN",
-	"orrAssY5V2HuQAbW9K6WktFrGieq2m23pr",
-	"4Ebf4PkG9QEnQTm4MVvaZvJV6Y9av3jhgb",
-	"7Uf5xJ3GkiEKaLxC2WmJ1t6SeekJeBdJfu",
-	"oz4ytDKbCqpgjW3LPc52pW2CaK2gxCcWmL",
-	"2ex5Z7TufQ5Z8xv5mXe53fSQRfUr35SSo7Q",
-	"WV2ap7ZubTxeDdmEZ1Xo7ufGMkekLWikJu",
-	"ckCTV4r1pNuz6j2VBRHhaJN9HsCLY7muLV",
-	"MXJx96ZJVSjktgeYZpVK8vn1H3xWP8ooq5",
-	"wyQVmno9aBJZmQ99nDSLoYWwp7YDJCWsrH",
-	"2cc9wKxCsFNRkoAQDAoHke3ZoyL1mSV14cj",
-	"29k9g3F5AYfVaa1joE1PpZjBED6hQXes8Mm",
-	"2XPLzz4ZLf1A9ykyTCjW5gEmVjnWa8CuatH",
-	"iH7DqqojTgUn2JxmY9hgFp165Nk7wKfan9",
-	"RJzzwUs3c9C8Y7NFYzNfFoqiUKeBhBfPki",
-	"2W2cGyiCRM4nwmmiGPgMuGaPGeBzEm7VZPn",
-	"ALJVNKYL7WGxFBSriiZuwZKWD4b7fbV1od",
-	"tBaeg9zE2sgmw5ZQENaPPYd6jfwpVpGTzS",
-	"2hdTw5Hk3rsgpZjvk8TyKcCZoRVXU5QVrUt",
-	"A1QU6jKq8YgTP79M8fwZNHUZc7hConFKmy",
-	"q9RkXoty3X1fuaypDDRUi78rWgJWYJMmpJ",
-	"2Xvm6is5cAPA85xnSYXDuAqiRyoXiky5RaD",
-	"4CW2CPJEzxhn2PS4JoSLoWGL5QQ7dL2eji",
-	"24EG6uTzL7DHNzcwsygYGRR1nfu5kco7AZ1",
-	"KghGnWw5fppTrqHSERXZf61yf7GkuQdCnV",
-	"2WojewRA3LbpyXTP9ANy8CZqJMgmyNm3MDr",
-	"2BsMfywmGV3M2CoDA112Rs7ZBkiMHfy9X11",
-	"kK1Q4gPyYfVVMzQtAPRzL8qXMqJ67Y7tKs",
-	"28J4mx8xfUtM92DbQ6i2Jmqw5J7dNivfroN",
-	"gQvgyG1djgtftoCVrSZmsRxr7okD4LheKw",
-	"3iFGBKapAWWzbiGFSr5ScbhrEPm6Esyvia",
-	"NFW2akQH2vu7AqkQXxFz2P5vkXTWkSqrSm",
-	"2MQJjLnWRp9eHh6MpCwpiUeshhtmri12mci",
-	"2QjRQUMyL6iodtHP9zKmxCNYZ7k3jxtk49C",
-	"USdfKy7B6oFNoauHWMmoCA7ND9rHqYw2Mf",
-	"cA49et9WtptYHf6wA1F8qqVgH3kS5jJ9vK",
-	"qaJT9TjcMi46sTKcgwRQU8o5Lw2Ea1gC4N",
-	"22pyn5RyhqtTQu4obYjuWYRNNw4i54L8xVr",
-	"22dkmukC6iH4FFLBmHne6modJZZQ3MC9BAT",
-	"z6CJZfYLvmd41GRVE8HASjRcy5hqbpHZvE",
-	"GEBWJ2KpRQDBTCCtvnaAJV2cYurgXS8pta",
-	"oS8fbEm82cprmAeineBeDkaKd7QownDZQh",
-	"rQpAs1LVQdphyj9ipEAuukAoj9kNpSP8cM",
-	"6NSJKsPxmqipGAfFFhUKbkopjrvEESTX3j",
-	"cuC68ycVXmD2EBzYFNYQ6akhKGrh3FGjSf",
-	"bw4wtYU8toepomrhWP2p8UFYfHBbvEV425",
-	"HvgNmDz5jD39Gwmi9VfDY1iYMhZUpZ8GKz",
-	"SbApuZAYquWP3Q6iD51BcMBQjuApYEkRVf",
-	"2Ugii5yxJgLzC59jV1vF8GK7UBZdvxwobeJ",
-	"21N2iJ1qnQRiJWcEqNRxXwfNp8QcmiyhtPy",
-	"9TC4RGs6AtFUsbcVWnSoCdoCpSfM66ALAc",
-	"oQzn55UWG4iMcY9bTNb27aTnRdfiGHAwbD",
-	"2GCdwsRpQhcf8SQcynFrMVDM26Bbj6sgv9M",
-	"2NRFe7REtSmaM2qAgZeG45hC8EtVGV2QjeB",
-	"25RGnhN7VojHUTvQBJA9nBT5y1qTQGULMzR",
-	"26uCBDfF8E2PJU2Dzz2ysgKwv9m4BhodTz9",
-	"Wkvima5cF7DDFdmJQqcdq8Syaq9DuAJJRD",
-	"286hSoJYxvENFSHwG51ZbmKaochLJyq4ERQ",
-	"FEGxF3HPoM2HCWHn82tyeh9o7vEQq5ySGE",
-	"h38DxNxGhWGTq9p5tJnN5r4Fwnn85Krrb6",
-	"2c1UU8J6Y3kL4cmQh21Tj8wkzidCiZxwdwd",
-	"2bJ32KuGmjmwKyAtzWdLFpXNM6t83CCPLq5",
-	"2fi8oLC9zfVVGnzzQtu3Y3rffS65Hiz6QHo",
-	"TKD93RxFr2Am44TntLiJQus4qcEwTtvEEQ",
-	"zMDywYdGEDtTSvWnCyc3qsYHWwj9ogws74",
-	"25NbotTka7TwtbXUpSCQD8RMgHKspyDubXJ",
-	"2ayCELBERubQWH5QxUr3cTxrYpidvUAzsSw",
-	"RMTCwLiYDKEAiJu5ekHL1NQ8UKHi5ozCPg",
-	"ejJjiCwp86ykmFr5iTJ8LxQXJ2wJPTYmkm",
+	"Z1k6qej1yPoNAZmRVCGQW8t5zyW2b8EYSa",
+	"2BWPusJggEF8zHTdQyy62oTAre8m326kNTG",
+	"2abzMYGi6HFP8F8ZyUcdWY1fXTvgncLxxUg",
+	"2cP8ed8C7ugK2BozeVnVhVfFQ1HL1tixsPq",
+	"yQ4FP8iRjN7fwLwi3RrJZaNJf63LNoijKo",
+	"2epqomKZVWGxaDpaZkwu9QHM9RaFsAHgziQ",
+	"SLKXabjERNatNZfrWQDzVvxJt2SSYMx7DN",
+	"xYS16WXoa7qoN6CCibmPtW938F7JiNYJmo",
+	"9u1jDCeK7WSVs1wuoQYK3GD3PqUGtTNLUz",
+	"2FbNyvNqMzEvrRrv4kcsp4GxLZQPWHzUwru",
+	"2Z5dMNPe9Dd5FPTWWwTsRfREwBf53wftz3G",
+	"2ZpN1NMvoM3brt1LiQbxSUT1nK14tiTKmjs",
+	"qGFwwYHJtYSH26Bg3E33Zi7EQXMj45ECU7",
+	"2Y6gK4992vHPJJ1cUQa7GmkHTophhqkfqNp",
+	"2Ur7H3NJ6uivPx4W1uuDhfeu92E7tXFgbbk",
+	"yX78JsBww6qRM9Cy6r1cMcM1cqqfvLB81G",
+	"2Wu7pUcSQVXBMF6iHT5GK1JRHToYc5VwEMU",
+	"sX8V7KE5XDgtFsxUTF8nJoXCAS4WG6qmdL",
+	"BMzo8uGGtTswKCLiUGQYQEC3TSgFUYxGUV",
+	"WYUGd1PJtFkjAtzFULcYcXwzM4RwD4Bohg",
+	"8D3QqVJ1hLhmwK9dH6CjK8j8PmzBZdFXKi",
+	"zZLbkWDxiZPvziLXiT8Bgir1bP94dGkSv8",
+	"cDAzgCAxKphwdhWB5ziSxrBzS8J3FxKrVX",
+	"W64hnPJ8h48CErFoAJDunC7FDTXCiDBYaU",
+	"rkTX8iDP4FbZHkomBze6UkHDmhvw54vrci",
+	"2i4iBDtiagR3jiegnmbiVZ1tkTp6vwVFjXF",
+	"wFCxPvzVBce1APxbFGgpPFnTN5cQUnLqEp",
+	"KLW1sJUTuGQcQATaMrkMeEzMhKqFE9SzrM",
+	"2zxjynmyjHwyA9CmtEpnKBUc2t3k7L7YxT",
+	"ZpcAH9SdsUfgPgJUt7kY5FdvSkxMAy7AmW",
+	"XV7YcAQujembG8pWksdjqraWfoGdpxUcfy",
+	"Exskppefm5J35ejwS7HQTRUtCKNacwbENc",
+	"Y7ngaBfePwGy4vpNgyxXcw6EdHkuNkLdh",
+	"2VW4y4MjEceMtkHkoPPC5DCVATZJJ4wFd61",
+	"2jF6FVDs3trWCg2AjdTGBbJbqBL1zo83aXV",
+	"eAdXVjvfwATdMsQNxWCwn9fmrjj4yV1gYk",
+	"JnuJTVDw2SBh559G4TKVdDSMZXgizBgAWX",
+	"2XjofbRTnCU5F5PFMErLmivfveCJj1PyyKX",
+	"jY7D2siBSdtCnW2qZQxtAHNMiVtzp72dpy",
+	"Pqho6tzNGn1oCjx67oJ64FjZsodcbCfZA8",
+	"2LxCTzJFfNCxDvkhq8cgfq4P6T2bK5qVxKh",
+	"Wf2ZE5NswFjSiMc4beFG3kG5jppMU77NA",
+	"7ThrKqp68NLgSCAvFq75CghNDCVzPEV8pb",
+	"2FXWH1yNkrpSm99uggshpAxyRxu4BDsLp43",
+	"2VcS5bRbATZRfyfGqxtdcVsCMnFcU5YRC5w",
+	"cAyxv5CRpUWqNZesjU4dsw9zsgp3wo1mzC",
+	"uxRrW927Thp9kBUqCCF5uGizQNYN9GJZBb",
+	"usSvw63y1HrHxYpksjBhcnrFSDQao619KN",
+	"urVo1mKQa4wZR79ViFeDfsBA1hmNRz4hgA",
+	"21wFQjVV8HvWtKcyA9gzb8rQeFLYUFRE5S1",
+	"2C8mNpRfEsAfjMYqc8DwqdzYz1XsWdX8Lpg",
+	"2SVd9pGm59rafUAc3i5fWUwiEvc9QDz7Cqd",
+	"ZRvUwGFJ58y5H9rwUEqJNdPEr4DiAjRgHm",
+	"H7a1oj4KvWKkGntnHh2uZoGyrvM3pJgGze",
+	"4YffwkMK5Fmxc5KcXKaQs1QJU9yLHijrrx",
+	"2TkyDHnoGJcLbdsNYFUwccm113GF8MMCETj",
+	"2CFTZWhHDEXwX1N1NRwNZ9bEErzw82SKNyx",
+	"Nxrs7pRYWGbxEByhZk14qJoJYbUuPgF1LD",
+	"2GbczQuUZe3CDt6fQEkmmYxruTZ2JW79uAs",
+	"2UoAuTGkA8xq6bh9Hs6KXNTLkD459THrxiy",
+	"q6w4yZbzLoNWmfq5MopSwPkzPJqrroWq8v",
+	"Ee6bq2Gmxp8m5aCX4jvG1yBPawLvTttGNX",
+	"2MSTLjxJm2oPLzQCYrbm1zkFR5xEnQeFi3h",
+	"27WRJ87b3DxEvmh8axkgEews8DYycjN91xm",
+	"29b2GCEQrM7vF7pngHKtvVrTXCL1DJU3s9Y",
+	"2NrKPH7UH3jhhEW7JVsExLpTtJQ6kYfcmw1",
+	"SWPF7b9d6KPn3XXiq6tdkoLcWTiPpTD7Ke",
+	"2eQf3cgtUVSpNScJjwNgoEyHuVXjao6GXw3",
+	"2Ltm64ZjNcaP85jNUgucpKNHZDcrnFmiyEk",
+	"WuRJen3KavvZxyKVaPHcUvJW6CtWT33iRp",
+	"pf4g5BXa3Scq5yRiX7redAP6c3up6BrysT",
+	"aGx9x1qMqNyxDVwD5PY7hQ1RaYCuTX6GX5",
+	"2hU1xk3Zy4NrfAKuB28ZtEbQNPum6pjjZ2b",
+	"21p72H7FJ1g3jMM178ozj1BjzsAnkKskYBm",
+	"5f3Rh5dPHGoV1z1kbWNApJVreQUAKaJiXz",
+	"wZJjmL184D1ZyfmHmfrZX8UKH6RyEYFMJ8",
+	"BxvJsGCV1n2G7PZEEE3ZQuUeSNAfszEcWB",
+	"2YUhuUVPJERRCo5d8KMZFRXE5XZdmHus547",
+	"tUq54Hdd4Pyp5vEXN7zC5fNk1UjyomgTae",
+	"A2vjGTqvXyTaopoUhiNiNyJKoRrXPRobSm",
+	"npfUWxQg42wWNXwYhUPAS76cDgVtm44H4n",
+	"gYuosHMTDoYTEgmUkYoDppZy1PjJRW5eyB",
+	"J45zxYi9UUUvCK5Pv51gHPH1a33FuPL2LJ",
+	"2LDfyyL9EL9gSe3aC5rM8EpMh4zn3BJWfk",
+	"2cH1VBMKSWW6WftBs7CGwLrWESTkxhc2xMX",
+	"tmEmVBTDxTpbGNwMdBJLTWrLn4VnpFphmZ",
+	"DjemT2f8iAwk7MnxMcpjy75urf1Vz5rgsV",
+	"2RRa36ELR8jDm8m5Mf6DS3tskMw1PknCxAz",
+	"cEKEgZyjjMR2mmnfFHgmFjAvVwmzeowiYg",
+	"A2ohw5ZgMHdsJpskEgd4pQny3DtH54Sfqi",
+	"2bFQnRXmFr3coS7v4tJh6AC4mfUJTTRVQME",
+	"PLsUxXTJJWKuZVnMxP3FYbnMk1DBxXyBoJ",
+	"n5fMHy77JrfQawvZ4SKfsiVkfvuN1YnCyQ",
+	"2f2Uu4BbbcWMX4qe1uFm8UgPsZkHsCB7t5U",
+	"W1SQKqzBDxVyVkkjTx1aEFFC1vDaf6cujg",
+	"Yf9D1EHKL5tjAiNjsVTcon5aARz7orb4mo",
+	"28eVNsyvCYx85qgwF9FYJLseKyoknDVig21",
+	"pYzWzz1oxFbdtg2UrXmebNvhmzhGbBt9Q",
+	"afAj8nZ92jBMnMNcDKyHSkAyBEHf65tW6n",
+	"2mB9UQbsiB4jFooBLYgnBk3hB8GnEEYVadz",
 }
 
 func InitTransaction() coin.Transaction {
 	var tx coin.Transaction
 
-	output := cipher.MustSHA256FromHex("043836eb6f29aaeb8b9bfce847e07c159c72b25ae17d291f32125e7f1912e2a0")
+	output := cipher.MustSHA256FromHex("da0efba358ae199122f8cc79d14a8df8affe0c604bf127756312089e3966a423")
 	tx.PushInput(output)
 
 	for i := 0; i < 100; i++ {
 		addr := cipher.MustDecodeBase58Address(AddrList[i])
 		tx.PushOutput(addr, 1e12, 1) // 10e6*10e6
 	}
-	/*
+
+	if false {
 		seckeys := make([]cipher.SecKey, 1)
 		seckey := ""
 		seckeys[0] = cipher.MustSecKeyFromHex(seckey)
 		tx.SignInputs(seckeys)
-	*/
+	} else {
 
-	txs := make([]cipher.Sig, 1)
-	sig := "ed9bd7a31fe30b9e2d53b35154233dfdf48aaaceb694a07142f84cdf4f5263d21b723f631817ae1c1f735bea13f0ff2a816e24a53ccb92afae685fdfc06724de01"
-	txs[0] = cipher.MustSigFromHex(sig)
-	tx.Sigs = txs
-
+		txs := make([]cipher.Sig, 1)
+		sig := "712cf304a7b34dbcc234939b8dc4c78a893f1f5d4d9a4d53dac96f0fcee10cb5251c78aadc6c04c7013eacc50076afc8ae605256ba96d5feebc7952ae0f1ea9f00"
+		txs[0] = cipher.MustSigFromHex(sig)
+		tx.Sigs = txs
+	}
 	tx.UpdateHeader()
 
 	err := tx.Verify()
