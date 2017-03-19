@@ -53,8 +53,8 @@ var (
 	//GenesisCoinVolume: 100e12, //100e6 * 10e6
 
 	DefaultConnections = []string{
-		"120.55.114.17:6100",
-		"119.23.146.83:6100",
+		"120.55.114.17:7100",
+		"119.23.146.83:7100",
 	}
 )
 
@@ -233,7 +233,7 @@ var devConfig Config = Config{
 	// public interface
 	Address: "",
 	//gnet uses this for TCP incoming and outgoing
-	Port: 6000,
+	Port: 7100,
 
 	MaxConnections: 16,
 	// How often to make outgoing connections, in seconds
@@ -242,7 +242,7 @@ var devConfig Config = Config{
 	//AddressVersion: "test",
 	// Remote web interface
 	WebInterface:             true,
-	WebInterfacePort:         6420,
+	WebInterfacePort:         7520,
 	WebInterfaceAddr:         "127.0.0.1",
 	WebInterfaceCert:         "",
 	WebInterfaceKey:          "",
@@ -250,7 +250,7 @@ var devConfig Config = Config{
 	PrintWebInterfaceAddress: false,
 
 	RPCInterface:     true,
-	RPCInterfacePort: 6430,
+	RPCInterfacePort: 7530,
 	RPCInterfaceAddr: "127.0.0.1",
 
 	LaunchBrowser: true,
