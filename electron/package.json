@@ -1,12 +1,12 @@
 {
-    "name": "skycoin",
-    "productName": "Skycoin",
-    "author": "skycoin",
+    "name": "shellcoin",
+    "productName": "Shellcoin2.0",
+    "author": "shellcoin",
     "main": "src/electron-main.js",
     "version": "0.14.0",
-    "description": "skycoin wallet",
+    "description": "shellcoin wallet",
     "build": {
-        "appId": "org.skycoin.skycoin",
+        "appId": "org.shanghaikuaibei.shellcoin",
         "nsis": {
             "oneClick": false,
             "allowToChangeInstallationDirectory": true
