@@ -41,13 +41,13 @@ var (
 	}
 
 	//TODO: Move time and other genesis block settigns from visor, to here
-	GenesisSignatureStr = "61fbc0ed2202590800d0eefb836e84b32df379eeaeb0647948fbc5371eac900c12cb5f916b4c849e763a4042c736516c2510351948295f2d86ea7955f01a3cae00"
-	GenesisAddressStr   = "zAF4Nq7bZaXWE5qEaSXmRS4DXxSiSrE9vK"
+	GenesisSignatureStr = "c4b7f876d2157f89591dbd93fc672fb3fb19c91f2ecd1f1ce9d210cf042ca8015ef85bf4e7b038d116a6f5ac4ba934f75ac08caab465c888d55a705354905d0201"
+	GenesisAddressStr   = "2McssAMHheetABpQjyf3VSTeeAsi84Mo5At"
 	BlockchainPubkeyStr = "02af0b8addc4e0be5922e98a1d8ebd91cf5f034ccd8756f126f9714507fd178a78"
 	BlockchainSeckeyStr = ""
 
 	GenesisTimestamp  uint64 = 1489844528
-	GenesisCoinVolume uint64 = 100e12
+	GenesisCoinVolume uint64 = 300e12
 
 	//GenesisTimestamp: 1426562704,
 	//GenesisCoinVolume: 100e12, //100e6 * 10e6
@@ -696,7 +696,7 @@ func InitTransaction() coin.Transaction {
 
 	for i := 0; i < 100; i++ {
 		addr := cipher.MustDecodeBase58Address(AddrList[i])
-		tx.PushOutput(addr, 1e12, 1) // 10e6*10e6
+		tx.PushOutput(addr, 3e12, 1) // 10e6*10e6
 	}
 
 	if false {
@@ -706,7 +706,7 @@ func InitTransaction() coin.Transaction {
 		tx.SignInputs(seckeys)
 	} else {
 		txs := make([]cipher.Sig, 1)
-		sig := "712cf304a7b34dbcc234939b8dc4c78a893f1f5d4d9a4d53dac96f0fcee10cb5251c78aadc6c04c7013eacc50076afc8ae605256ba96d5feebc7952ae0f1ea9f00"
+		sig := "906261765d4614f5ac660a37588bf8fd4781cb083e4cf1fa6c27b570f000641b7cee85b70668763865e32379454e7c498ca222232677b49bd1fda6edc420ce4c00"
 		txs[0] = cipher.MustSigFromHex(sig)
 		tx.Sigs = txs
 	}
@@ -718,6 +718,6 @@ func InitTransaction() coin.Transaction {
 		log.Panic(err)
 	}
 
-	log.Printf("signature= %s", tx.Sigs[0].Hex())
+	log.Printf("init tx signature= %s", tx.Sigs[0].Hex())
 	return tx
 }
