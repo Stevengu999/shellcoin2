@@ -78,14 +78,14 @@ $ source $HOME/.gvm/scripts/gvm
 
 $ gvm install go1.4 --source=https://github.com/golang/go
 $ gvm use go1.4
-$ gvm install go1.7
-$ gvm use go1.7 --default
+$ gvm install go1.8
+$ gvm use go1.8 --default
 ```
 
 If you open up new terminal and the go command is not found then add this to .bashrc . GVM should add this automatically
 ```
 $ [[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
-$ gvm use go1.7 >/dev/null
+$ gvm use go1.8 >/dev/null
 ```
 
 
@@ -156,13 +156,6 @@ Local Server API
 ----------------
 
 Run the shellcoin client then
-```
-http://127.0.0.1:6420/wallets
-http://127.0.0.1:6420/outputs
-http://127.0.0.1:6420/blockchain/blocks?start=0&end=500
-http://127.0.0.1:6420/blockchain
-http://127.0.0.1:6420/connections
-```
 
 ```
 http://127.0.0.1:6420/wallets
@@ -174,11 +167,11 @@ http://127.0.0.1:6420/wallet/balance?id=2016_02_17_9671.wlt
 
 http://127.0.0.1:6420/outputs to see outputs (address balances)
 
-http://127.0.0.1:6420/blockchain/blocks?start=0&end=5000 to see all blocks and transactions.
+http://127.0.0.1:6420/blocks?start=0&end=5000 to see all blocks and transactions.
 
 http://127.0.0.1:6420/network/connections to check network connections
 
-http://127.0.0.1:6420/blockchain to check blockchain head
+http://127.0.0.1:6420/blockchain/metadata to check blockchain head
 ```
 
 Modules
@@ -225,3 +218,14 @@ Release Builds
 $ npm install
 $ gulp dist
 ```
+
+CLI
+----
+
+See the doc of command line interface [here](cmd/cli/README.md).
+
+
+WebRPC
+------
+
+See the doc of webrpc [here](src/api/webrpc/README.md).
