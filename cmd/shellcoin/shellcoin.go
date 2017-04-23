@@ -41,7 +41,7 @@ var (
 	}
 
 	//TODO: Move time and other genesis block settigns from visor, to here
-	GenesisSignatureStr = "c4b7f876d2157f89591dbd93fc672fb3fb19c91f2ecd1f1ce9d210cf042ca8015ef85bf4e7b038d116a6f5ac4ba934f75ac08caab465c888d55a705354905d0201"
+	GenesisSignatureStr = "133067c26b92641433dd6be12c3898d14646a07a29fe51547c69f76da0bbfd2973aa48d4cb41c282866c1bda09a979c2ccd9fd53ad8ac98fcbe9033d53bb75eb01"
 	GenesisAddressStr   = "EmQkiYpw14SHHkVFVeMqnPouPERKtvtF1A"
 	BlockchainPubkeyStr = "02af0b8addc4e0be5922e98a1d8ebd91cf5f034ccd8756f126f9714507fd178a78"
 	BlockchainSeckeyStr = ""
