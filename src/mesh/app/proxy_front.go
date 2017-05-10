@@ -17,11 +17,17 @@ func (self *proxyClient) Send(msg []byte) {
 
 	request := &messages.AppMessage{
 		0,
-		false,
 		msg,
 	}
 	requestSerialized := messages.Serialize(messages.MsgAppMessage, request)
-	self.send(requestSerialized)
+	self.sendToMeshnet(requestSerialized)
+}
+
+func (self *proxyClient) Shutdown() {
+	for _, c := range self.connections {
+		(*c).Close()
+	}
+	self.app.Shutdown()
 }
 
 func (self *proxyClient) Listen() {
@@ -48,7 +54,7 @@ func (self *proxyClient) Listen() {
 
 		go func() { // run listening the connection for data and sending it through the meshnet to the server
 			for {
-				message := make([]byte, config.ProxyPacketSize)
+				message := make([]byte, PROXY_PACKET_SIZE)
 
 				n, err := userConn.Read(message)
 				if err != nil {
@@ -74,17 +80,11 @@ func (self *proxyClient) Listen() {
 	}
 }
 
-func (self *proxyClient) Consume(msg []byte) {
-	appMsg := messages.AppMessage{}
-	err := messages.Deserialize(msg, &appMsg)
-	if err != nil {
-		log.Printf("Cannot deserialize application message: %s\n", err.Error())
-		return
-	}
+func (self *proxyClient) consume(appMsg *messages.AppMessage) {
 
 	proxyMessageS := appMsg.Payload
 	proxyMessage := messages.ProxyMessage{}
-	err = messages.Deserialize(proxyMessageS, &proxyMessage)
+	err := messages.Deserialize(proxyMessageS, &proxyMessage)
 	if err != nil {
 		log.Printf("Cannot deserialize proxy message: %s\n", err.Error())
 		return
@@ -116,8 +116,6 @@ func (self *proxyClient) Consume(msg []byte) {
 
 	data := proxyMessage.Data // otherwise send data to the user app
 
-	//	log.Printf("\nClient accepted %d bytes to %s\n\n", len(data), remoteAddr)
-
 	_, err = userConn.Write(data)
 	if err != nil { // if the write is unsuccessful, close the connection and send closing command to close the corresponding connection on the server
 		log.Printf("Cannot write to connection with remote address %s, error is %s\n", proxyMessage.RemoteAddr, err.Error())
@@ -129,5 +127,84 @@ func (self *proxyClient) Consume(msg []byte) {
 		closingMessageS := messages.Serialize(messages.MsgProxyMessage, closingMessage)
 		self.Send(closingMessageS)
 		userConn.Close()
+	}
+}
+
+func (self *proxyClient) RegisterAtNode(nodeAddr string) error {
+
+	nodeConn, err := net.Dial("tcp", nodeAddr)
+	if err != nil {
+		panic(err)
+		return err
+	}
+
+	self.nodeConn = nodeConn
+
+	go self.listenFromNode()
+
+	registerMessage := messages.RegisterAppMessage{}
+
+	rmS := messages.Serialize(messages.MsgRegisterAppMessage, registerMessage)
+
+	err = self.sendToNode(rmS)
+	return err
+}
+
+func (self *proxyClient) listenFromNode() {
+	conn := self.nodeConn
+	for {
+		message, err := getFullMessage(conn)
+		if err != nil {
+			if err == io.EOF {
+				continue
+			} else {
+				break
+			}
+		} else {
+			go self.handleIncomingFromNode(message)
+		}
+	}
+}
+
+func (self *proxyClient) handleIncomingFromNode(msg []byte) error {
+	switch messages.GetMessageType(msg) {
+
+	case messages.MsgAssignConnectionNAM:
+		m1 := &messages.AssignConnectionNAM{}
+		err := messages.Deserialize(msg, m1)
+		if err != nil {
+			return err
+		}
+		self.meshConnId = m1.ConnectionId
+		return nil
+
+	case messages.MsgAppMessage:
+		appMsg := &messages.AppMessage{}
+		err := messages.Deserialize(msg, appMsg)
+		if err != nil {
+			return err
+		}
+		go self.consume(appMsg)
+		return nil
+
+	case messages.MsgNodeAppResponse:
+		nar := &messages.NodeAppResponse{}
+		err := messages.Deserialize(msg, nar)
+		if err != nil {
+			return err
+		}
+
+		sequence := nar.Sequence
+		respChan, err := self.getResponseNodeAppChannel(sequence)
+		if err != nil {
+			panic(err)
+			return err
+		} else {
+			respChan <- true
+			return nil
+		}
+
+	default:
+		return messages.ERR_INCORRECT_MESSAGE_TYPE
 	}
 }

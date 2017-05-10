@@ -1,130 +1,90 @@
 package app
 
 import (
-	//	"fmt"
 	"github.com/stretchr/testify/assert"
-	//	"syscall"
 	"testing"
 	"time"
 
 	"github.com/skycoin/skycoin/src/mesh/messages"
+	"github.com/skycoin/skycoin/src/mesh/node"
 	network "github.com/skycoin/skycoin/src/mesh/nodemanager"
 )
 
 func TestCreateServer(t *testing.T) {
 	messages.SetDebugLogLevel()
-	meshnet := network.NewNetwork()
+	meshnet := network.NewNetwork("127.0.0.1:5999")
 	defer meshnet.Shutdown()
-	serverAddr := meshnet.AddNewNodeStub()
+
+	serverNode, err := node.CreateNode(&node.NodeConfig{"127.0.0.1:5000", []string{"127.0.0.1:5999"}, 4000})
+	assert.Nil(t, err)
+	defer serverNode.Shutdown()
+
 	handle := func(in []byte) []byte {
 		return in
 	}
 
-	server, err := NewServer(meshnet, serverAddr, handle)
+	server, err := NewServer(messages.MakeAppId("server1"), "127.0.0.1:4000", handle)
 	assert.Nil(t, err)
-	assert.Equal(t, server.Address, serverAddr)
+	assert.Equal(t, messages.AppId([]byte("server1")), server.id)
+	defer server.Shutdown()
 }
 
 func TestCreateClient(t *testing.T) {
 	messages.SetDebugLogLevel()
-	meshnet := network.NewNetwork()
+	meshnet := network.NewNetwork("127.0.0.1:5999")
 	defer meshnet.Shutdown()
-	clientAddr := meshnet.AddNewNodeStub()
 
-	client, err := NewClient(meshnet, clientAddr)
+	clientNode, err := node.CreateNode(&node.NodeConfig{"127.0.0.1:5000", []string{"127.0.0.1:5999"}, 4001})
 	assert.Nil(t, err)
-	assert.Equal(t, client.Address, clientAddr)
-}
+	defer clientNode.Shutdown()
 
-/*
-func TestSend(t *testing.T) {
-	messages.SetInfoLogLevel()
-	meshnet := network.NewNetwork()
-	defer meshnet.Shutdown()
-
-	// not obligatory,  this increases the number of Unix maximum number of opened files to work with big number of simultaneous UDP connections
-
-	var rlimit syscall.Rlimit
-	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rlimit)
+	client, err := NewClient(messages.MakeAppId("client1"), "127.0.0.1:4001")
 	if err != nil {
 		panic(err)
 	}
-
-	oldMax, oldCur := rlimit.Max, rlimit.Cur
-	rlimit.Max, rlimit.Cur = 2048, 2048 // ~ number of nodes * 2
-
-	err = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rlimit)
-	if err != nil {
-		panic(err)
-	}
-
-	defer func() { // when done return back as it was
-		rlimit.Max, rlimit.Cur = oldMax, oldCur
-		err = syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rlimit)
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	// the end of the number of opened files stuff
-
-	clientAddr, serverAddr, route, backRoute := meshnet.CreateSequenceOfNodesAndBuildRoutes(1000)
-
-	_, err = NewServer(meshnet, serverAddr, func(in []byte) []byte {
-		return append(in, '!')
-	})
 	assert.Nil(t, err)
 
-	client, err := NewClient(meshnet, clientAddr)
-	assert.Nil(t, err)
-
-	err = client.DialWithRoutes(route, backRoute)
-	assert.Nil(t, err)
-
-	response, err := client.Send([]byte("test"))
-
-	assert.Nil(t, err)
-	assert.Equal(t, "test!", string(response))
-	time.Sleep(1 * time.Second)
+	assert.Equal(t, messages.AppId([]byte("client1")), client.id)
+	defer client.Shutdown()
 }
-*/
 
 func TestSendWithFindRoute(t *testing.T) {
 	messages.SetDebugLogLevel()
 
-	meshnet := network.NewNetwork()
+	meshnet := network.NewNetwork("127.0.0.1:5999")
 	defer meshnet.Shutdown()
 
-	clientAddr, serverAddr := meshnet.CreateThreeRoutes()
+	clientNode, serverNode := meshnet.CreateThreeRoutes(14000)
 
-	_, err := NewServer(meshnet, serverAddr, func(in []byte) []byte {
+	server, err := NewServer(messages.MakeAppId("server19"), serverNode.AppTalkAddr(), func(in []byte) []byte {
 		return append(in, []byte("!!!")...)
 	})
 	assert.Nil(t, err)
+	defer server.Shutdown()
 
-	client, err := NewClient(meshnet, clientAddr)
+	client, err := NewClient(messages.MakeAppId("client19"), clientNode.AppTalkAddr())
 	assert.Nil(t, err)
+	defer client.Shutdown()
 
-	err = client.Dial(serverAddr)
+	err = client.Connect(server.Id(), serverNode.Id())
 	assert.Nil(t, err)
 
 	response, err := client.Send([]byte("test"))
 
 	assert.Nil(t, err)
 	assert.Equal(t, "test!!!", string(response))
-
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 }
 
 func TestHandle(t *testing.T) {
 	messages.SetInfoLogLevel()
 
-	meshnet := network.NewNetwork()
+	meshnet := network.NewNetwork("127.0.0.1:5999")
 	defer meshnet.Shutdown()
 
-	clientAddr, serverAddr := meshnet.CreateThreeRoutes()
+	clientNode, serverNode := meshnet.CreateThreeRoutes(15000)
 
-	_, err := NewServer(meshnet, serverAddr, func(in []byte) []byte {
+	server, err := NewServer(messages.MakeAppId("increasingServer"), serverNode.AppTalkAddr(), func(in []byte) []byte {
 		size := len(in)
 		result := make([]byte, size)
 		for i := 0; i < size; i++ {
@@ -133,11 +93,13 @@ func TestHandle(t *testing.T) {
 		return result
 	})
 	assert.Nil(t, err)
+	defer server.Shutdown()
 
-	client, err := NewClient(meshnet, clientAddr)
+	client, err := NewClient(messages.MakeAppId("Client of increasing server"), clientNode.AppTalkAddr())
 	assert.Nil(t, err)
+	defer client.Shutdown()
 
-	err = client.Dial(serverAddr)
+	err = client.Connect(server.Id(), serverNode.Id())
 	assert.Nil(t, err)
 
 	size := 100000
@@ -157,46 +119,51 @@ func TestHandle(t *testing.T) {
 		}
 	}
 	assert.True(t, correct)
-
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 }
 
 func TestSocks(t *testing.T) {
 	messages.SetInfoLogLevel()
 
-	meshnet := network.NewNetwork()
+	meshnet := network.NewNetwork("127.0.0.1:5999")
 	defer meshnet.Shutdown()
 
-	clientAddr, serverAddr := meshnet.CreateSequenceOfNodes(20)
+	clientNode, serverNode := meshnet.CreateSequenceOfNodes(20, 16000)
 
-	client, err := NewSocksClient(meshnet, clientAddr, "0.0.0.0:8000")
+	client, err := NewSocksClient(messages.MakeAppId("socks client 0"), clientNode.AppTalkAddr(), "0.0.0.0:8000")
 	assert.Nil(t, err)
+	defer client.Shutdown()
+
 	assert.Equal(t, client.ProxyAddress, "0.0.0.0:8000")
 
-	server, err := NewSocksServer(meshnet, serverAddr, "127.0.0.1:8001")
+	server, err := NewSocksServer(messages.MakeAppId("socks server 0"), serverNode.AppTalkAddr(), "127.0.0.1:8001")
 	assert.Nil(t, err)
+	defer server.Shutdown()
+
 	assert.Equal(t, server.ProxyAddress, "127.0.0.1:8001")
 
-	err = client.Dial(serverAddr)
+	err = client.Connect(server.Id(), serverNode.Id())
 	assert.Nil(t, err)
+	time.Sleep(1 * time.Second)
 }
 
 func TestVPN(t *testing.T) {
 	messages.SetInfoLogLevel()
 
-	meshnet := network.NewNetwork()
+	meshnet := network.NewNetwork("127.0.0.1:5999")
 	defer meshnet.Shutdown()
 
-	clientAddr, serverAddr := meshnet.CreateSequenceOfNodes(20)
+	clientNode, serverNode := meshnet.CreateSequenceOfNodes(20, 17000)
 
-	client, err := NewVPNClient(meshnet, clientAddr, "0.0.0.0:4321")
+	client, err := NewVPNClient(messages.MakeAppId("vpn_client"), clientNode.AppTalkAddr(), "0.0.0.0:4321")
 	assert.Nil(t, err)
+	defer client.Shutdown()
 	assert.Equal(t, client.ProxyAddress, "0.0.0.0:4321")
 
-	_, err = NewVPNServer(meshnet, serverAddr)
+	server, err := NewVPNServer(messages.MakeAppId("vpn_server"), serverNode.AppTalkAddr())
 	assert.Nil(t, err)
+	defer server.Shutdown()
 
-	err = client.Dial(serverAddr)
+	err = client.Connect(server.Id(), serverNode.Id())
 	assert.Nil(t, err)
-
 }

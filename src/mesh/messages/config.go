@@ -6,14 +6,11 @@ import (
 	"time"
 )
 
-const (
-	DEBUG = iota
-	INFO
-)
-
 type ConfigStruct struct {
 	SendInterval      time.Duration
+	SendIntervalNum   uint32
 	TimeUnit          time.Duration
+	TimeUnitNum       int
 	StartPort         uint32
 	VPNSubnet         string
 	SimulateDelay     bool
@@ -27,6 +24,7 @@ type ConfigStruct struct {
 	RetransmitLimit   int
 	LogLevel          uint8
 	MaxBuffer         uint64
+	MsgSrvTimeout     uint32
 }
 
 type ConfigFromFile struct {
@@ -55,6 +53,9 @@ type ConfigFromFile struct {
 		ProxyPacketSize int
 		ProxyTimeout    time.Duration
 	}
+	MsgSrv struct {
+		MsgSrvTimeout uint32
+	}
 }
 
 var config = &ConfigStruct{ // default values
@@ -72,7 +73,10 @@ var config = &ConfigStruct{ // default values
 	MaxPacketSize:     16384,
 	MaxBuffer:         8192,
 	SendInterval:      1500 * time.Microsecond,
+	SendIntervalNum:   1500,
 	TimeUnit:          10 * time.Microsecond,
+	TimeUnitNum:       10,
+	MsgSrvTimeout:     1000,
 }
 
 func init() {
@@ -103,30 +107,16 @@ func init() {
 
 	config.MaxBuffer = cfgFromFile.Congestion.MaxBuffer
 	config.SendInterval = time.Duration(cfgFromFile.Congestion.SendInterval) * time.Microsecond
+	config.SendIntervalNum = uint32(cfgFromFile.Congestion.SendInterval)
 	config.TimeUnit = time.Duration(cfgFromFile.Congestion.TimeUnit) * time.Microsecond
+	config.TimeUnitNum = cfgFromFile.Congestion.TimeUnit
 
 	config.ProxyPacketSize = cfgFromFile.Proxy.ProxyPacketSize
 	config.ProxyTimeout = time.Duration(cfgFromFile.Proxy.ProxyTimeout) * time.Millisecond
+
+	config.MsgSrvTimeout = cfgFromFile.MsgSrv.MsgSrvTimeout
 }
 
 func GetConfig() *ConfigStruct {
 	return config
-}
-
-func SetLogLevel(loglevel uint8) {
-	if loglevel == DEBUG || loglevel == INFO {
-		config.LogLevel = loglevel
-	}
-}
-
-func SetDebugLogLevel() {
-	SetLogLevel(DEBUG)
-}
-
-func SetInfoLogLevel() {
-	SetLogLevel(INFO)
-}
-
-func IsDebug() bool {
-	return config.LogLevel == DEBUG
 }

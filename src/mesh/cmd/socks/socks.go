@@ -43,22 +43,26 @@ func main() {
 		return
 	}
 
-	meshnet := network.NewNetwork()
+	meshnet := network.NewNetwork("127.0.0.1:5999")
 	defer meshnet.Shutdown()
 
-	clientAddr, serverAddr := meshnet.CreateSequenceOfNodes(hops + 1)
+	clientNode, serverNode := meshnet.CreateSequenceOfNodes(hops+1, 15000)
 
-	_, err = app.NewSocksServer(meshnet, serverAddr, "0.0.0.0:8001")
+	serverId := messages.MakeAppId("socksServer0")
+
+	server, err := app.NewSocksServer(serverId, serverNode.AppTalkAddr(), "0.0.0.0:8001")
 	if err != nil {
 		panic(err)
 	}
+	defer server.Shutdown()
 
-	client, err := app.NewSocksClient(meshnet, clientAddr, "0.0.0.0:8000")
+	client, err := app.NewSocksClient(messages.MakeAppId("client0"), clientNode.AppTalkAddr(), "0.0.0.0:8000")
 	if err != nil {
 		panic(err)
 	}
+	defer client.Shutdown()
 
-	err = client.Dial(serverAddr)
+	err = client.Connect(serverId, serverNode.Id())
 	if err != nil {
 		panic(err)
 	}

@@ -1,19 +1,18 @@
-package nodemanager
+package node
 
 import (
-	"fmt"
+	"log"
+	"net"
 	"sync"
 	"time"
 
-	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/skycoin/skycoin/src/mesh/messages"
 )
 
 type Connection struct {
 	id               messages.ConnectionId
-	nm               *NodeManager
 	status           uint8
-	nodeAttached     cipher.PubKey
+	nodeAttached     *Node
 	routeId          messages.RouteId
 	sequence         uint32
 	ackChannels      map[uint32]chan bool
@@ -21,75 +20,62 @@ type Connection struct {
 	incomingCounter  map[uint32]uint32
 	lock             *sync.Mutex
 	throttle         uint32
-	consumer         messages.Consumer
+	consumer         net.Conn
 	errChan          chan error
+
+	packetSize   int
+	sendInterval time.Duration
+	timeout      time.Duration
 }
 
 const (
-	DISCONNECTED = iota
-	CONNECTED
+	DISCONNECTED uint8 = 0
+	CONNECTED    uint8 = 1
+	CONNECTING   uint8 = 2
 )
 
-var (
-	config     = messages.GetConfig()
-	TIMEOUT    = config.ConnectionTimeout
-	packetSize = config.MaxPacketSize / 2
-)
+func (node *Node) newConnection(connId messages.ConnectionId, routeId messages.RouteId, appId messages.AppId) (*Connection, error) {
 
-/*
-func (nm *NodeManager) ConnectWithRoutes(nodeAttached cipher.PubKey, routeId, backRouteId messages.RouteId) (messages.Connection, error) {
-	conn.routeId = routeId
-	conn.backRouteId = backRouteId
-	conn.status = CONNECTED
-	return conn, nil
-}
-*/
-
-func (nm *NodeManager) NewConnection(nodeAttached cipher.PubKey) (messages.Connection, error) {
-	id := messages.RandConnectionId()
-	_, err := nm.getNodeById(nodeAttached)
-	if err != nil {
-		return nil, err
-	}
 	conn := &Connection{
-		id:               id,
-		nm:               nm,
-		status:           DISCONNECTED,
-		nodeAttached:     nodeAttached,
+		id:               connId,
+		routeId:          routeId,
+		status:           CONNECTING,
+		nodeAttached:     node,
 		lock:             &sync.Mutex{},
 		ackChannels:      make(map[uint32]chan bool),
-		errChan:          make(chan error, 1024),
+		errChan:          make(chan error),
 		incomingMessages: make(map[uint32]map[uint32][]byte),
 		incomingCounter:  make(map[uint32]uint32),
 	}
 
+	node.lock.Lock()
+	appIdStr := string(appId)
+	if appIdStr != "" {
+		appConn, ok := node.appConns[appIdStr]
+		if ok {
+			conn.consumer = appConn
+			msg := messages.AssignConnectionNAM{connId}
+			msgS := messages.Serialize(messages.MsgAssignConnectionNAM, msg)
+			err := sendToAppConn(appConn, msgS)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, messages.ERR_APP_DOESNT_EXIST
+		}
+	}
+	node.connections[connId] = conn
+	node.lock.Unlock()
+
+	conn.packetSize = int(node.maxPacketSize / 2)
+
 	go conn.receiveErrors()
-	nm.connectionList[nodeAttached] = conn
+	conn.sendInterval = node.sendInterval
+	conn.timeout = node.connectionTimeout
 	return conn, nil
 }
 
-func (nm *NodeManager) Connect(nodeAttached, nodeTo cipher.PubKey) error {
-
-	clientConn, ok := nm.connectionList[nodeAttached]
-	if !ok {
-		panic("can't find connection")
-	}
-
-	serverConn, ok := nm.connectionList[nodeTo]
-	if !ok {
-		panic("can't find connection")
-	}
-
-	routeId, backRouteId, err := nm.findRoute(nodeAttached, nodeTo)
-	if err != nil {
-		return err
-	}
-	clientConn.routeId, serverConn.routeId = routeId, backRouteId
-	clientConn.status, serverConn.status = CONNECTED, CONNECTED
-	return nil
-}
-
-func (self *Connection) Send(msg []byte) {
+func (self *Connection) Send(msg []byte) error {
 	packets := self.split(msg)
 	total := len(packets)
 
@@ -97,49 +83,24 @@ func (self *Connection) Send(msg []byte) {
 	sequence := self.setAckChannel(ackChannel)
 
 	for order, packet := range packets {
-		time.Sleep(config.SendInterval)
+		time.Sleep(self.sendInterval)
 		self.sendPacket(packet, sequence, uint32(order), uint32(total))
 	}
 
 	select {
 	case <-ackChannel:
-		return
-	case <-time.After(time.Duration(TIMEOUT) * time.Millisecond):
+		return nil
+	case <-time.After(time.Duration(self.timeout) * time.Millisecond):
 		self.errChan <- messages.ERR_CONN_TIMEOUT
+		return messages.ERR_CONN_TIMEOUT
 	}
 }
 
-func (self *Connection) Use(msg []byte) {
-
-	switch messages.GetMessageType(msg) {
-
-	case messages.MsgConnectionMessage:
-		connMsg := messages.ConnectionMessage{}
-		err := messages.Deserialize(msg, &connMsg)
-		if err != nil {
-			fmt.Println("wrong connection message", msg)
-			return
-		}
-
-		go self.handleConnectionMessage(&connMsg)
-
-	case messages.MsgConnectionAck:
-		connAck := messages.ConnectionAck{}
-		err := messages.Deserialize(msg, &connAck)
-		if err != nil {
-			fmt.Println("wrong connection Ack", msg)
-			return
-		}
-
-		go self.receiveAck(connAck.Sequence)
-	}
+func (self *Connection) Id() messages.ConnectionId {
+	return self.id
 }
 
-func (self *Connection) AssignConsumer(consumer messages.Consumer) {
-	self.consumer = consumer
-}
-
-func (self *Connection) GetStatus() uint8 {
+func (self *Connection) Status() uint8 {
 	return self.status
 }
 
@@ -148,6 +109,7 @@ func (self *Connection) Close() {
 }
 
 func (self *Connection) split(msg []byte) [][]byte {
+	packetSize := self.packetSize
 	msgSize := len(msg)
 	packets := [][]byte{}
 	num := (msgSize-1)/packetSize + 1
@@ -173,10 +135,11 @@ func (self *Connection) sendPacket(msg []byte, sequence, order, total uint32) {
 	}
 
 	connMessage := messages.ConnectionMessage{
-		Sequence: sequence,
-		Order:    order,
-		Total:    total,
-		Payload:  msg,
+		Sequence:     sequence,
+		ConnectionId: self.id,
+		Order:        order,
+		Total:        total,
+		Payload:      msg,
 	}
 
 	connMessageSerialized := messages.Serialize(messages.MsgConnectionMessage, connMessage)
@@ -191,25 +154,21 @@ func (self *Connection) sendPacket(msg []byte, sequence, order, total uint32) {
 
 func (self *Connection) sendToNode(inRouteMessage *messages.InRouteMessage) {
 
-	errChan := self.errChan
+	node := self.nodeAttached
 
-	node, err := self.nm.getNodeById(self.nodeAttached)
-	if err != nil {
-		errChan <- err
-	}
-
-	if node.Congested {
+	if node.congested {
 		self.throttle = messages.Increase(self.throttle)
-		time.Sleep(time.Duration(self.throttle) * config.TimeUnit)
+		time.Sleep(time.Duration(self.throttle) * self.nodeAttached.timeUnit)
 	} else {
 		self.throttle = messages.Decrease(self.throttle)
 	}
-	node.InjectConnectionMessage(inRouteMessage)
+	node.injectConnectionMessage(inRouteMessage)
 }
 
 func (self *Connection) receiveErrors() {
 	for err := range self.errChan {
 		if err != nil {
+			log.Printf("Disconnect connection %d because of error %s\n", self.id, err.Error())
 			self.status = DISCONNECTED
 		}
 	}
@@ -230,7 +189,10 @@ func (self *Connection) handleConnectionMessage(connMsg *messages.ConnectionMess
 	if self.getIncomingCounter(sequence) >= total {
 		go self.sendAck(sequence)
 		fullMessage := self.assemble(sequence, int(total))
-		self.sendToConsumer(fullMessage)
+		err := self.sendToConsumer(fullMessage)
+		if err != nil {
+			log.Println("sending message to consumer is failed:", err)
+		}
 	}
 }
 
@@ -243,15 +205,19 @@ func (self *Connection) assemble(sequence uint32, total int) []byte {
 	return result
 }
 
-func (self *Connection) sendToConsumer(msg []byte) {
+func (self *Connection) sendToConsumer(msg []byte) error {
 	if self.consumer != nil {
-		self.consumer.Consume(msg)
+		err := sendToAppConn(self.consumer, msg)
+		return err
+	} else {
+		return nil
 	}
 }
 
 func (self *Connection) sendAck(sequence uint32) {
 	connAck := messages.ConnectionAck{
-		Sequence: sequence,
+		Sequence:     sequence,
+		ConnectionId: self.id,
 	}
 
 	connAckSerialized := messages.Serialize(messages.MsgConnectionAck, connAck)
@@ -267,7 +233,7 @@ func (self *Connection) sendAck(sequence uint32) {
 func (self *Connection) receiveAck(sequence uint32) {
 	ackChannel, err := self.getAckChannel(sequence)
 	if err != nil {
-		fmt.Printf("no response channel with id %d is found\n", sequence)
+		log.Printf("no response channel with id %d is found\n", sequence)
 		return
 	}
 	ackChannel <- true

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	//"github.com/skycoin/skycoin/src/daemon/gnet"
@@ -40,6 +39,10 @@ type VisorConfig struct {
 	BlocksResponseCount uint64
 	//how long between saving copies of the blockchain
 	BlockchainBackupRate time.Duration
+	// Max announce txns hash number
+	MaxTxnAnnounceNum int
+	// How often to announce our unconfirmed txns to peers
+	TxnsAnnounceRate time.Duration
 }
 
 func NewVisorConfig() VisorConfig {
@@ -50,6 +53,8 @@ func NewVisorConfig() VisorConfig {
 		BlocksAnnounceRate:   time.Second * 60, //backup, could be disabled
 		BlocksResponseCount:  20,
 		BlockchainBackupRate: time.Second * 30,
+		MaxTxnAnnounceNum:    16,
+		TxnsAnnounceRate:     time.Minute,
 	}
 }
 
@@ -121,13 +126,14 @@ func (vs *Visor) Shutdown() {
 }
 
 // RefreshUnconfirmed checks unconfirmed txns against the blockchain and purges ones too old
-func (vs *Visor) RefreshUnconfirmed() {
+func (vs *Visor) RefreshUnconfirmed() (hashes []cipher.SHA256) {
 	if vs.Config.Disabled {
 		return
 	}
 	vs.strand(func() {
-		vs.v.RefreshUnconfirmed()
+		hashes = vs.v.RefreshUnconfirmed()
 	})
+	return
 }
 
 // RequestBlocks Sends a GetBlocksMessage to all connections
@@ -150,6 +156,60 @@ func (vs *Visor) AnnounceBlocks(pool *Pool) {
 		m := NewAnnounceBlocksMessage(vs.v.HeadBkSeq())
 		pool.Pool.BroadcastMessage(m)
 	})
+}
+
+// AnnounceAllTxns announces local unconfirmed transactions
+func (vs *Visor) AnnounceAllTxns(pool *Pool) {
+	if vs.Config.Disabled {
+		return
+	}
+	vs.strand(func() {
+		// get local unconfirmed transaction hashes.
+		hashes := vs.v.GetAllValidUnconfirmedTxHashes()
+		// filter all thoses invalid txns
+		hashesSet := divideHashes(hashes, vs.Config.MaxTxnAnnounceNum)
+		for _, hs := range hashesSet {
+			m := NewAnnounceTxnsMessage(hs)
+			if err := pool.Pool.BroadcastMessage(m); err != nil {
+				logger.Debug("Broadcast AnnounceTxnsMessage failed, err:%v", err)
+				return
+			}
+		}
+	})
+}
+
+// AnnounceTxns announce given transaction hashes.
+func (vs *Visor) AnnounceTxns(pool *Pool, txns []cipher.SHA256) {
+	if vs.Config.Disabled {
+		return
+	}
+	if len(txns) > 0 {
+		if err := pool.Pool.BroadcastMessage(NewAnnounceTxnsMessage(txns)); err != nil {
+			logger.Debug("Broadcast AnnounceTxnsMessage failed, err:%v", err)
+		}
+	}
+}
+
+func divideHashes(hashes []cipher.SHA256, n int) [][]cipher.SHA256 {
+	if len(hashes) == 0 {
+		return [][]cipher.SHA256{}
+	}
+	var j int
+	var hashesArray [][]cipher.SHA256
+	if len(hashes) > n {
+		for i := range hashes {
+			if len(hashes[j:i]) == n {
+				hs := make([]cipher.SHA256, n)
+				copy(hs, hashes[j:i])
+				hashesArray = append(hashesArray, hs)
+				j = i
+			}
+		}
+	}
+	hs := make([]cipher.SHA256, len(hashes)-j)
+	copy(hs, hashes[j:])
+	hashesArray = append(hashesArray, hs)
+	return hashesArray
 }
 
 // RequestBlocksFromAddr sends a GetBlocksMessage to one connected address
@@ -232,7 +292,7 @@ func (vs *Visor) ResendTransaction(h cipher.SHA256, pool *Pool) {
 		return
 	}
 	vs.strand(func() {
-		if ut, ok := vs.v.Unconfirmed.Txns[h]; ok {
+		if ut, ok := vs.v.Unconfirmed.Get(h); ok {
 			vs.BroadcastTransaction(ut.Txn, pool)
 		}
 	})
@@ -246,15 +306,10 @@ func (vs *Visor) ResendUnconfirmedTxns(pool *Pool) []cipher.SHA256 {
 		return txids
 	}
 	vs.strand(func() {
-		var txns []visor.UnconfirmedTxn
-		for _, unconfirmTxn := range vs.v.Unconfirmed.Txns {
-			txns = append(txns, unconfirmTxn)
-		}
-
-		// sort the txns by receive time
-		sort.Sort(byTxnRecvTime(txns))
+		txns := vs.v.GetAllUnconfirmedTxns()
 
 		for i := range txns {
+			logger.Debugf("Rebroadcast tx %s", txns[i].Hash().Hex())
 			vs.BroadcastTransaction(txns[i].Txn, pool)
 			txids = append(txids, txns[i].Txn.Hash())
 		}
@@ -298,33 +353,20 @@ func (vs *Visor) RecordBlockchainLength(addr string, bkLen uint64) {
 // EstimateBlockchainLength returns the blockchain length estimated from peer reports
 // Deprecate. Should not need. Just report time of last block
 func (vs *Visor) EstimateBlockchainLength() uint64 {
-	var l uint64
+	var maxLen uint64
 	vs.strand(func() {
 		ourLen := vs.v.HeadBkSeq() + 1
 		if len(vs.blockchainLengths) < 2 {
-			l = ourLen
+			maxLen = ourLen
 			return
 		}
-		lengths := make(BlockchainLengths, len(vs.blockchainLengths))
-		i := 0
 		for _, seq := range vs.blockchainLengths {
-			lengths[i] = seq
-			i++
-		}
-		sort.Sort(lengths)
-		median := len(lengths) / 2
-		var val uint64
-		if len(lengths)%2 == 0 {
-			val = (lengths[median] + lengths[median-1]) / 2
-		} else {
-			val = lengths[median]
-		}
-
-		if val >= l {
-			l = val
+			if maxLen < seq {
+				maxLen = seq
+			}
 		}
 	})
-	return l
+	return maxLen
 }
 
 // HeadBkSeq returns the head sequence
@@ -412,10 +454,7 @@ func (self *GetBlocksMessage) Process(d *Daemon) {
 	// Record this as this peer's highest block
 	d.Visor.RecordBlockchainLength(self.c.Addr, self.LastBlock)
 	// Fetch and return signed blocks since LastBlock
-	//blocks := d.Visor.Visor.GetSignedBlocksSince(self.LastBlock,
-	//	d.Visor.Config.BlocksResponseCount)
-	blocks := d.Visor.GetSignedBlocksSince(self.LastBlock,
-		self.RequestedBlocks)
+	blocks := d.Visor.GetSignedBlocksSince(self.LastBlock, self.RequestedBlocks)
 	logger.Debug("Got %d blocks since %d", len(blocks), self.LastBlock)
 	if len(blocks) == 0 {
 		return
@@ -470,7 +509,6 @@ func (self *GiveBlocksMessage) Process(d *Daemon) {
 			break
 		}
 	}
-	logger.Critical("Processed %d/%d blocks", processed, len(self.Blocks))
 	if processed == 0 {
 		return
 	}
@@ -610,7 +648,6 @@ func (self *GiveTxnsMessage) Process(d *Daemon) {
 	if d.Visor.Config.Disabled {
 		return
 	}
-
 	if len(self.Txns) > 32 {
 		logger.Warning("More than 32 transactions in pool. Implement breaking transactions transmission into multiple packets")
 	}
@@ -626,12 +663,13 @@ func (self *GiveTxnsMessage) Process(d *Daemon) {
 			if !known {
 				logger.Warning("Failed to record txn: %v", err)
 			} else {
-				logger.Warning("Duplicate Transation: ")
+				logger.Warning("Duplicate Transation: %v", txn.Hash())
 			}
 		}
 	}
 	// Announce these transactions to peers
 	if len(hashes) != 0 {
+		logger.Debugf("Announce %d transactions", len(hashes))
 		m := NewAnnounceTxnsMessage(hashes)
 		d.Pool.Pool.BroadcastMessage(m)
 	}
@@ -662,5 +700,5 @@ func (txs byTxnRecvTime) Swap(i, j int) {
 }
 
 func (txs byTxnRecvTime) Less(i, j int) bool {
-	return txs[i].Received.Nanosecond() < txs[j].Received.Nanosecond()
+	return txs[i].Received < txs[j].Received
 }

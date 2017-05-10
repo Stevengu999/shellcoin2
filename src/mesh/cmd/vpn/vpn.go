@@ -43,22 +43,27 @@ func main() {
 		return
 	}
 
-	meshnet := network.NewNetwork()
+	meshnet := network.NewNetwork("127.0.0.1:5999")
 	defer meshnet.Shutdown()
 
-	clientAddr, serverAddr := meshnet.CreateSequenceOfNodes(hops + 1)
+	clientNode, serverNode := meshnet.CreateSequenceOfNodes(hops+1, 15000)
 
-	_, err = app.NewVPNServer(meshnet, serverAddr)
+	serverId := messages.MakeAppId("vpn_server")
+	clientId := messages.MakeAppId("vpn_client")
+
+	server, err := app.NewVPNServer(serverId, serverNode.AppTalkAddr())
 	if err != nil {
 		panic(err)
 	}
+	defer server.Shutdown()
 
-	client, err := app.NewVPNClient(meshnet, clientAddr, "0.0.0.0:4321")
+	client, err := app.NewVPNClient(clientId, clientNode.AppTalkAddr(), "0.0.0.0:4321")
 	if err != nil {
 		panic(err)
 	}
+	defer client.Shutdown()
 
-	err = client.Dial(serverAddr)
+	err = client.Connect(serverId, serverNode.Id())
 	if err != nil {
 		panic(err)
 	}

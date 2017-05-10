@@ -12,10 +12,25 @@ import (
 
 type RPCReceiver struct {
 	NodeManager *NodeManager
+	cmPort      int
+}
+
+func (receiver *RPCReceiver) addNode() cipher.PubKey {
+	nodeConfig := &node.NodeConfig{
+		"127.0.0.1:" + strconv.Itoa(receiver.cmPort),
+		[]string{"127.0.0.1:5999"},
+		receiver.cmPort + 2000,
+	}
+	n, err := node.CreateNode(nodeConfig)
+	if err != nil {
+		panic(err)
+	}
+	receiver.cmPort++
+	return n.Id()
 }
 
 func (receiver *RPCReceiver) AddNode(_ []string, result *[]byte) error {
-	nodeId := receiver.NodeManager.AddNewNodeStub()
+	nodeId := receiver.addNode()
 	fmt.Println("added node:", nodeId)
 	*result = messages.Serialize((uint16)(0), nodeId)
 	return nil
@@ -32,9 +47,13 @@ func (receiver *RPCReceiver) AddNodes(args []string, result *[]byte) error {
 		fmt.Println(e)
 		return e
 	}
-	nodes := receiver.NodeManager.createNodeList(n)
-	fmt.Println("added nodes:", nodes)
-	*result = messages.Serialize((uint16)(0), nodes)
+	nodeIds := []cipher.PubKey{}
+	for i := 0; i < n; i++ {
+		nodeId := receiver.addNode()
+		nodeIds = append(nodeIds, nodeId)
+	}
+	fmt.Println("added nodes:", nodeIds)
+	*result = messages.Serialize((uint16)(0), nodeIds)
 	return nil
 }
 
@@ -80,12 +99,12 @@ func (receiver *RPCReceiver) ConnectNodes(args []string, result *[]byte) error {
 	}
 
 	node0Id, node1Id := nm.nodeIdList[node0], nm.nodeIdList[node1]
-	tf, err := nm.ConnectNodeToNode(node0Id, node1Id)
+	tf, err := nm.connectNodeToNode(node0Id, node1Id)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
-	transports := tf.GetTransportIDs()
+	transports := tf.getTransportIDs()
 	if transports[0] == messages.NIL_TRANSPORT || transports[1] == messages.NIL_TRANSPORT {
 		e := messages.ERR_ALREADY_CONNECTED
 		fmt.Println(e)
@@ -124,14 +143,14 @@ func (receiver *RPCReceiver) ListTransports(args []string, result *[]byte) error
 	tflist := receiver.NodeManager.transportFactoryList
 	infoList := []transport.TransportInfo{}
 	for _, tf := range tflist {
-		t0, t1 := tf.GetTransports()
-		node0, node1 := t0.AttachedNode.GetId(), t1.AttachedNode.GetId()
+		t0, t1 := tf.getTransports()
+		node0, node1 := t0.attachedNode.id, t1.attachedNode.id
 		if nodeId == node0 || nodeId == node1 {
 			info0 := transport.TransportInfo{
-				t0.Id, t0.Status, node0, node1,
+				t0.id, t0.status, node0, node1,
 			}
 			info1 := transport.TransportInfo{
-				t1.Id, t0.Status, node1, node0,
+				t1.id, t0.status, node1, node0,
 			}
 			infoList = append(infoList, info0)
 			infoList = append(infoList, info1)
@@ -146,13 +165,13 @@ func (receiver *RPCReceiver) ListAllTransports(_ []string, result *[]byte) error
 	tflist := receiver.NodeManager.transportFactoryList
 	infoList := []transport.TransportInfo{}
 	for _, tf := range tflist {
-		t0, t1 := tf.GetTransports()
-		node0, node1 := t0.AttachedNode.GetId(), t1.AttachedNode.GetId()
+		t0, t1 := tf.getTransports()
+		node0, node1 := t0.attachedNode.id, t1.attachedNode.id
 		info0 := transport.TransportInfo{
-			t0.Id, t0.Status, node0, node1,
+			t0.id, t0.status, node0, node1,
 		}
 		info1 := transport.TransportInfo{
-			t1.Id, t0.Status, node1, node0,
+			t1.id, t0.status, node1, node0,
 		}
 		infoList = append(infoList, info0)
 		infoList = append(infoList, info1)
@@ -272,8 +291,8 @@ func (receiver *RPCReceiver) ListRoutes(args []string, result *[]byte) error {
 		fmt.Println(err)
 		return err
 	}
-	routeRulesPointers := node0.RouteForwardingRules
-	routeRules := []node.RouteRule{}
+	routeRulesPointers := node0.routeForwardingRules
+	routeRules := []messages.RouteRule{}
 	for _, routeRule := range routeRulesPointers {
 		routeRules = append(routeRules, *routeRule)
 	}

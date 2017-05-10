@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/skycoin/skycoin/src/mesh/messages"
 )
 
@@ -38,22 +37,16 @@ var (
 	}
 )
 
-func NewVPNServer(meshnet messages.Network, address cipher.PubKey) (*VPNServer, error) {
+func NewVPNServer(appId messages.AppId, nodeAddr string) (*VPNServer, error) {
 	vpnServer := &VPNServer{}
-	vpnServer.register(meshnet, address)
+	vpnServer.id = appId
 	vpnServer.lock = &sync.Mutex{}
 	vpnServer.timeout = time.Duration(messages.GetConfig().AppTimeout)
+	vpnServer.responseNodeAppChannels = make(map[uint32]chan bool)
 	vpnServer.meshConns = map[string]*Pipe{}
 	vpnServer.targetConns = map[string]net.Conn{}
 
-	conn, err := meshnet.NewConnection(address)
-	if err != nil {
-		return nil, err
-	}
-
-	vpnServer.connection = conn
-
-	err = meshnet.Register(address, vpnServer)
+	err := vpnServer.RegisterAtNode(nodeAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +56,15 @@ func NewVPNServer(meshnet messages.Network, address cipher.PubKey) (*VPNServer, 
 	return vpnServer, nil
 }
 
-func (self *VPNServer) Consume(msg []byte) {
+func (self *VPNServer) Shutdown() {
+	for _, c := range self.meshConns {
+		c.reader.Close()
+		c.writer.Close()
+	}
+	self.app.Shutdown()
+}
+
+func (self *VPNServer) consume(msg *messages.AppMessage) {
 
 	proxyMessage := getProxyMessage(msg)
 	if proxyMessage == nil {
@@ -134,7 +135,12 @@ func (self *VPNServer) serveConn(meshConn io.Reader, remoteAddr string, ready ch
 	reqData := request[typeIndex+1:]
 
 	urlIndex := bytes.IndexByte(reqData, 32)
-	url := string(reqData[:urlIndex])
+	var url string
+	if urlIndex == -1 {
+		url = string(reqData)
+	} else {
+		url = string(reqData[:urlIndex])
+	}
 
 	urlData := strings.Split(url, "://")
 	if len(urlData) > 1 {
@@ -231,4 +237,83 @@ func (self *VPNServer) closeConns(remoteAddr string) {
 	self.lock.Unlock()
 
 	self.proxyServer.closeConns(remoteAddr)
+}
+
+func (self *VPNServer) RegisterAtNode(nodeAddr string) error {
+
+	nodeConn, err := net.Dial("tcp", nodeAddr)
+	if err != nil {
+		panic(err)
+		return err
+	}
+
+	self.nodeConn = nodeConn
+
+	go self.listenFromNode()
+
+	registerMessage := messages.RegisterAppMessage{}
+
+	rmS := messages.Serialize(messages.MsgRegisterAppMessage, registerMessage)
+
+	err = self.sendToNode(rmS)
+	return err
+}
+
+func (self *VPNServer) listenFromNode() {
+	conn := self.nodeConn
+	for {
+		message, err := getFullMessage(conn)
+		if err != nil {
+			if err == io.EOF {
+				continue
+			} else {
+				break
+			}
+		} else {
+			go self.handleIncomingFromNode(message)
+		}
+	}
+}
+
+func (self *VPNServer) handleIncomingFromNode(msg []byte) error {
+	switch messages.GetMessageType(msg) {
+
+	case messages.MsgAssignConnectionNAM:
+		m1 := &messages.AssignConnectionNAM{}
+		err := messages.Deserialize(msg, m1)
+		if err != nil {
+			return err
+		}
+		self.meshConnId = m1.ConnectionId
+		return nil
+
+	case messages.MsgAppMessage:
+		appMsg := &messages.AppMessage{}
+		err := messages.Deserialize(msg, appMsg)
+		if err != nil {
+			return err
+		}
+		go self.consume(appMsg)
+		return nil
+
+	case messages.MsgNodeAppResponse:
+		nar := &messages.NodeAppResponse{}
+		err := messages.Deserialize(msg, nar)
+		if err != nil {
+			return err
+		}
+
+		sequence := nar.Sequence
+		respChan, err := self.getResponseNodeAppChannel(sequence)
+		if err != nil {
+			panic(err)
+			return err
+		} else {
+			respChan <- true
+			return nil
+		}
+
+	default:
+		return messages.ERR_INCORRECT_MESSAGE_TYPE
+	}
 }

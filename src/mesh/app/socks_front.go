@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/skycoin/skycoin/src/cipher"
 	"github.com/skycoin/skycoin/src/mesh/messages"
 )
 
@@ -13,21 +12,15 @@ type SocksClient struct {
 	proxyClient
 }
 
-func NewSocksClient(meshnet messages.Network, address cipher.PubKey, proxyAddress string) (*SocksClient, error) {
+func NewSocksClient(appId messages.AppId, nodeAddr string, proxyAddress string) (*SocksClient, error) {
 	setLimit(16384) // set limit of simultaneously opened files to 16384
 	socksClient := &SocksClient{}
-	socksClient.register(meshnet, address)
+	socksClient.id = appId
 	socksClient.lock = &sync.Mutex{}
 	socksClient.timeout = time.Duration(messages.GetConfig().AppTimeout)
+	socksClient.responseNodeAppChannels = make(map[uint32]chan bool)
 
-	conn, err := meshnet.NewConnection(address)
-	if err != nil {
-		return nil, err
-	}
-
-	socksClient.connection = conn
-
-	err = meshnet.Register(address, socksClient)
+	err := socksClient.RegisterAtNode(nodeAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +29,7 @@ func NewSocksClient(meshnet messages.Network, address cipher.PubKey, proxyAddres
 
 	socksClient.ProxyAddress = proxyAddress
 
-	return socksClient, err
+	return socksClient, nil
 }
 
 //SocksClient doesn't have differences from ProxyClient, only servers do
