@@ -32,9 +32,14 @@ type BlockchainProgress struct {
 	Current uint64 `json:"current"`
 	// Our best guess at true blockchain length
 	Highest uint64 `json:"highest"`
+	Peers   []struct {
+		Address string `json:"address"`
+		Height  uint64 `json:"height"`
+	} `json:"peers"`
 }
 
 type ResendResult struct {
+	Txids []string `json:"txids"` // transaction id
 }
 
 type RPC struct{}
@@ -72,9 +77,11 @@ func (self RPC) GetConnections(d *Daemon) *Connections {
 	}
 	conns := make([]*Connection, 0, d.Pool.Pool.Size())
 	for _, c := range d.Pool.Pool.GetConnections() {
-		conn := self.GetConnection(d, c.Addr())
-		if conn != nil {
-			conns = append(conns, conn)
+		if c.Solicited {
+			conn := self.GetConnection(d, c.Addr())
+			if conn != nil {
+				conns = append(conns, conn)
+			}
 		}
 	}
 	return &Connections{Connections: conns}
@@ -85,7 +92,7 @@ func (self RPC) GetDefaultConnections(d *Daemon) []string {
 }
 
 func (self RPC) GetTrustConnections(d *Daemon) []string {
-	peers := d.Peers.Peers.Peerlist.GetAllTrustedPeers()
+	peers := d.Peers.Peers.GetAllTrustedPeers()
 	addrs := make([]string, len(peers))
 	for i, p := range peers {
 		addrs[i] = p.Addr
@@ -95,7 +102,7 @@ func (self RPC) GetTrustConnections(d *Daemon) []string {
 
 // GetAllExchgConnections return all exchangeable connections
 func (rpc RPC) GetAllExchgConnections(d *Daemon) []string {
-	peers := d.Peers.Peers.Peerlist.RandomExchgAll(0)
+	peers := d.Peers.Peers.RandomExchgAll(0)
 	addrs := make([]string, len(peers))
 	for i, p := range peers {
 		addrs[i] = p.Addr
@@ -104,20 +111,45 @@ func (rpc RPC) GetAllExchgConnections(d *Daemon) []string {
 }
 
 func (self RPC) GetBlockchainProgress(v *Visor) *BlockchainProgress {
-	if v.Visor == nil {
+	if v.v == nil {
 		return nil
 	}
-	return &BlockchainProgress{
-		Current: v.Visor.HeadBkSeq(),
+
+	bp := &BlockchainProgress{
+		Current: v.HeadBkSeq(),
 		Highest: v.EstimateBlockchainLength(),
 	}
+	v.strand(func() {
+		for addr, height := range v.blockchainLengths {
+			bp.Peers = append(bp.Peers, struct {
+				Address string `json:"address"`
+				Height  uint64 `json:"height"`
+			}{
+				addr,
+				height,
+			})
+		}
+	})
+
+	return bp
 }
 
-func (self RPC) ResendTransaction(v *Visor, p *Pool,
-	txHash cipher.SHA256) *ResendResult {
-	if v.Visor == nil {
+func (self RPC) ResendTransaction(v *Visor, p *Pool, txHash cipher.SHA256) *ResendResult {
+	if v.v == nil {
 		return nil
 	}
 	v.ResendTransaction(txHash, p)
 	return &ResendResult{}
+}
+
+func (self RPC) ResendUnconfirmedTxns(v *Visor, p *Pool) *ResendResult {
+	if v.v == nil {
+		return nil
+	}
+	txids := v.ResendUnconfirmedTxns(p)
+	var rlt ResendResult
+	for _, txid := range txids {
+		rlt.Txids = append(rlt.Txids, txid.Hex())
+	}
+	return &rlt
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/skycoin/skycoin/src/cipher"
 	bip39 "github.com/skycoin/skycoin/src/cipher/go-bip39"
+	"github.com/skycoin/skycoin/src/util"
 )
 
 // Wallet contains meta data and address entries.
@@ -32,6 +33,10 @@ type Option func(w *Wallet)
 // NewWallet generates Deterministic Wallet
 // generates a random seed if seed is ""
 func NewWallet(wltName string, opts ...Option) Wallet {
+	//old seed generation
+	//seedRaw := cipher.SumSHA256(secp256k1.RandByte(64))
+	//seed := hex.EncodeToString(seedRaw[:])
+
 	// generaten bip39 as default seed
 	entropy, err := bip39.NewEntropy(128)
 	if err != nil {
@@ -48,6 +53,7 @@ func NewWallet(wltName string, opts ...Option) Wallet {
 			"filename": wltName,
 			"version":  version,
 			"label":    "",
+			"walletFolder": util.UserHome() + "/.skycoin/wallets",
 			"seed":     seed,
 			"lastSeed": seed,
 			"tm":       fmt.Sprintf("%v", time.Now().Unix()),

@@ -17,6 +17,9 @@ var (
 	DebugLevel1 = true
 	// DebugLevel2 enable checks for impossible conditions
 	DebugLevel2 = true
+
+	// ErrUnspentNotExist represents the error of unspent output in a tx does not exist
+	ErrUnspentNotExist = errors.New("Unspent output does not exist")
 )
 
 //Warning: 10e6 is 10 million, 1e6 is 1 million
@@ -57,18 +60,33 @@ type Blockchain struct {
 	unspent     coin.UnspentPool
 	head        cipher.SHA256
 	blkListener []BlockListener
+	arbitrating bool
 }
 
+// Option represents the option when creating the blockchain
+type Option func(*Blockchain)
+
 // NewBlockchain use the walker go throught the tree and update the head and unspent outputs.
-func NewBlockchain(tree BlockTree, walker Walker) *Blockchain {
+func NewBlockchain(tree BlockTree, walker Walker, ops ...Option) *Blockchain {
 	bc := &Blockchain{
 		tree:    tree,
 		walker:  walker,
 		unspent: coin.NewUnspentPool(),
 	}
 
+	for _, op := range ops {
+		op(bc)
+	}
+
 	bc.walkTree()
 	return bc
+}
+
+// Arbitrating option to change the mode
+func Arbitrating(enable bool) Option {
+	return func(bc *Blockchain) {
+		bc.arbitrating = enable
+	}
 }
 
 // GetUnspent returns the unspent output pool.
@@ -179,7 +197,7 @@ func (bc Blockchain) NewBlockFromTransactions(txns coin.Transactions, currentTim
 	if len(txns) == 0 {
 		return coin.Block{}, errors.New("No transactions")
 	}
-	err := bc.verifyTransactions(txns)
+	txns, err := bc.verifyTransactions(txns)
 	if err != nil {
 		return coin.Block{}, err
 	}
@@ -190,9 +208,11 @@ func (bc Blockchain) NewBlockFromTransactions(txns coin.Transactions, currentTim
 		if err := bc.verifyBlockHeader(b); err != nil {
 			log.Panic("Impossible Error: not allowed to fail")
 		}
-		if err := bc.verifyTransactions(b.Body.Transactions); err != nil {
+		txns, err := bc.verifyTransactions(b.Body.Transactions)
+		if err != nil {
 			log.Panic("Impossible Error: not allowed to fail")
 		}
+		b.Body.Transactions = txns
 	}
 	return b, nil
 }
@@ -251,9 +271,11 @@ func (bc Blockchain) verifyBlock(b coin.Block) error {
 			return err
 		}
 
-		if err := bc.verifyTransactions(b.Body.Transactions); err != nil {
+		txns, err := bc.verifyTransactions(b.Body.Transactions)
+		if err != nil {
 			return err
 		}
+		b.Body.Transactions = txns
 	}
 
 	if err := bc.verifyUxHash(b); err != nil {
@@ -513,9 +535,8 @@ func (bc Blockchain) processTransactions(txns coin.Transactions, arbitrating boo
 }
 
 // verifyTransactions returns an error if any Transaction in txns is invalid
-func (bc Blockchain) verifyTransactions(txns coin.Transactions) error {
-	_, err := bc.processTransactions(txns, false)
-	return err
+func (bc Blockchain) verifyTransactions(txns coin.Transactions) (coin.Transactions, error) {
+	return bc.processTransactions(txns, bc.arbitrating)
 }
 
 // ArbitrateTransactions returns an array of Transactions with invalid ones removed from txns.
@@ -537,7 +558,7 @@ func (bc Blockchain) TransactionFee(t *coin.Transaction) (uint64, error) {
 	for i := range t.In {
 		in, ok := bc.unspent.Get(t.In[i])
 		if !ok {
-			return 0, errors.New("Unspent output does not exist")
+			return 0, ErrUnspentNotExist
 		}
 		inHours += in.CoinHours(headTime)
 	}

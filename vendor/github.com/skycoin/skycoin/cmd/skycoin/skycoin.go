@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/boltdb/bolt"
 	logging "github.com/op/go-logging"
 	"github.com/skycoin/skycoin/src/api/webrpc"
 	"github.com/skycoin/skycoin/src/cipher"
@@ -139,6 +140,9 @@ type Config struct {
 	// Will force it to connect to this ip:port, instead of waiting for it
 	// to show up as a peer
 	ConnectTo string
+
+	DB          *bolt.DB
+	Arbitrating bool
 }
 
 func (c *Config) register() {
@@ -219,13 +223,14 @@ func (c *Config) register() {
 		c.OutgoingConnectionsRate, "How often to make an outgoing connection")
 	flag.BoolVar(&c.LocalhostOnly, "localhost-only", c.LocalhostOnly,
 		"Run on localhost and only connect to localhost peers")
+	flag.BoolVar(&c.Arbitrating, "arbitrating", c.Arbitrating, "Run node in arbitrating mode")
 	//flag.StringVar(&c.AddressVersion, "address-version", c.AddressVersion,
 	//	"Wallet address version. Options are 'test' and 'main'")
 }
 
 var devConfig Config = Config{
 	// Disable peer exchange
-	DisablePEX: true,
+	DisablePEX: false,
 	// Don't make any outgoing connections
 	DisableOutgoingConnections: false,
 	// Don't allowing incoming connections
@@ -441,6 +446,8 @@ func configureDaemon(c *Config) daemon.Config {
 	dc.Visor.Config.GenesisSignature = c.GenesisSignature
 	dc.Visor.Config.GenesisTimestamp = c.GenesisTimestamp
 	dc.Visor.Config.GenesisCoinVolume = GenesisCoinVolume
+	dc.Visor.Config.DB = c.DB
+	dc.Visor.Config.Arbitrating = c.Arbitrating
 	return dc
 }
 
@@ -471,8 +478,10 @@ func Run(c *Config) {
 	// initLogging(c.LogLevel, c.ColorLog)
 
 	// start the block db.
-	blockdb.Start()
-	defer blockdb.Stop()
+	db, stop := blockdb.Open()
+	defer stop()
+
+	c.DB = db
 
 	// start the transaction db.
 	// transactiondb.Start()

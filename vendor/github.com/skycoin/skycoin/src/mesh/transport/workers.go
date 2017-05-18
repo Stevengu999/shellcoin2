@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	maxWorkers = 100
+	maxWorkers = 10
 	maxQueue   = 1024
 )
 
@@ -35,9 +35,9 @@ func (w *Worker) Start() {
 			w.workerPool <- w.jobChannel
 			select {
 			case job := <-w.jobChannel:
-				w.transport.PacketsSent++
-				job.msg.Sequence = w.transport.PacketsSent
-				go w.transport.sendPacket(job.msg)
+				w.transport.packetsSent++
+				job.msg.Sequence = w.transport.packetsSent
+				w.transport.sendPacket(job.msg)
 			case <-w.quit:
 				return
 			}
