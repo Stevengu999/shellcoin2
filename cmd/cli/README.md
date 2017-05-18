@@ -5,7 +5,7 @@ Skycoin command line interface
 ## Install
 
 ```bash
-$ cd $GOPATH/src/github.com/skycoin/skycoin/cmd/cli
+$ cd $GOPATH/src/github.com/ShanghaiKuaibei/shellcoin2/cmd/cli
 $ ./install.sh
 ```
 
@@ -14,7 +14,7 @@ $ ./install.sh
 If you are in `bash`, run the following command:
 
 ```bash
-$ PROG=skycoin-cli source $GOPATH/src/github.com/skycoin/skycoin/cmd/cli/autocomplete/bash_autocomplete
+$ PROG=shellcoin-cli source $GOPATH/src/github.com/ShanghaiKuaibei/shellcoin2/cmd/cli/autocomplete/bash_autocomplete
 ```
 
 If you are in `zsh`, please replace the `bash_autocomplete` with `zsh_autocomplete` in the previous command.
@@ -28,17 +28,17 @@ The CLI uses environment variable to manage the configurations.
 
 ### RPC_ADDR
 
-CLI will connect to skycoin node rpc address:`127.0.0.1:6430` by default,
+CLI will connect to skycoin node rpc address:`127.0.0.1:7530` by default,
 you can change the address by setting the `RPC_ADDR` env variable
 with the following command:
 
 ```bash
-$ export RPC_ADDR=127.0.0.1:6430
+$ export RPC_ADDR=127.0.0.1:7530
 ```
 
 ### WALLET_DIR
 
-The default CLI wallet dir is located in `$HOME/.skycoin/wallets/`, change it by setting the
+The default CLI wallet dir is located in `$HOME/.shellcoin/wallets/`, change it by setting the
 `WALLET_DIR` environment variable.
 
 ```bash
@@ -47,7 +47,7 @@ $ export WALLET_DIR=$HOME/YOUR_WALLET_DIR
 
 ### WALLET_NAME
 
-The default CLI wallet file name is `skycoin_cli.wlt`, change it by setting the `WALLET_NAME` env.
+The default CLI wallet file name is `shellcoin_cli.wlt`, change it by setting the `WALLET_NAME` env.
 The wallet file name must have `.wlt` extension.
 
 ```bash
@@ -56,17 +56,17 @@ $ export WALLET_NAME=YOUR_WALLET_NAME
 
 ## Usage
 
-After the installation, you can run `skycoin-cli` to see the usage:
+After the installation, you can run `shellcoin-cli` to see the usage:
 
 ```bash
 
-$ skycoin-cli
+$ shellcoin-cli
 
 NAME:
-   skycoin-cli - the skycoin command line interface
+   shellcoin-cli - the shellcoin2.0 command line interface
 
 USAGE:
-   skycoin-cli [global options] command [command options] [arguments...]
+   shellcoin-cli [global options] command [command options] [arguments...]
 
 VERSION:
    0.1
@@ -101,22 +101,22 @@ GLOBAL OPTIONS:
 ### Send coin
 
 ```bash
-$ skycoin-cli send $recipient_address $amount
+$ shellcoin-cli send $recipient_address $amount
 ```
 
-The above `send` command will send coins from your node's default wallet: `$HOME/.skycoin/wallets/skycoin_cli.wlt`. You can also send from the wallet
+The above `send` command will send coins from your node's default wallet: `$HOME/.shellcoin/wallets/shellcoin_cli.wlt`. You can also send from the wallet
 as you want, just use the `-f` option flag, example:
 
 ```bash
-$ skycoin-cli send -f $WALLET_PATH $recipient_address $amount
+$ shellcoin-cli send -f $WALLET_PATH $recipient_address $amount
 ```
 
-Use `skycoin-cli send -h` to see the subcommand usage.
+Use `shellcoin-cli send -h` to see the subcommand usage.
 
 ### Check address balance
 
 ```bash
-$ skycoin-cli addressBalance 2iVtHS5ye99Km5PonsB42No3pQRGEURmxyc
+$ shellcoin-cli addressBalance 2iVtHS5ye99Km5PonsB42No3pQRGEURmxyc
 {
     "total_amount": 1,
     "addresses": [
@@ -131,7 +131,7 @@ $ skycoin-cli addressBalance 2iVtHS5ye99Km5PonsB42No3pQRGEURmxyc
 ### Get transaction
 
 ```bash
-$ skycoin-cli transaction 824d421a25f81aa7565d042a54b3e1e8fdc58bed4eefe8f8a90748da6d77d135
+$ shellcoin-cli transaction 824d421a25f81aa7565d042a54b3e1e8fdc58bed4eefe8f8a90748da6d77d135
 {
     "transaction": {
         "status": {
@@ -181,7 +181,7 @@ If we want to specify a `change address` in `send` command, we can use `-c` opti
 the command in the following way:
 
 ```bash
-$ skycoin-cli send $recipient_address $amount -c $change_address
+$ shellcoin-cli send $recipient_address $amount -c $change_address
 ```
 
 The change coins won't go to the address as you wish, it will go to the
@@ -191,5 +191,5 @@ coinbase address.
 The right script should look like this:
 
 ```bash
-$ skycoin-cli send -c $change_address $recipient_address $amount
+$ shellcoin-cli send -c $change_address $recipient_address $amount
 ```
