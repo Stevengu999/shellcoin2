@@ -20,7 +20,6 @@ import (
 	"github.com/skycoin/skycoin/src/daemon"
 	"github.com/skycoin/skycoin/src/gui"
 	"github.com/skycoin/skycoin/src/util"
-	"github.com/skycoin/skycoin/src/visor/blockdb"
 )
 
 var (
@@ -134,6 +133,9 @@ type Config struct {
 	// Will force it to connect to this ip:port, instead of waiting for it
 	// to show up as a peer
 	ConnectTo string
+
+	DBPath      string
+	Arbitrating bool
 }
 
 func (c *Config) register() {
@@ -214,6 +216,8 @@ func (c *Config) register() {
 		c.OutgoingConnectionsRate, "How often to make an outgoing connection")
 	flag.BoolVar(&c.LocalhostOnly, "localhost-only", c.LocalhostOnly,
 		"Run on localhost and only connect to localhost peers")
+	flag.BoolVar(&c.Arbitrating, "arbitrating", c.Arbitrating, "Run node in arbitrating mode")
+
 	//flag.StringVar(&c.AddressVersion, "address-version", c.AddressVersion,
 	//	"Wallet address version. Options are 'test' and 'main'")
 }
@@ -333,6 +337,9 @@ func (c *Config) postProcess() {
 	panicIfError(err, "Invalid -log-level %s", c.logLevel)
 	c.LogLevel = ll
 
+	if c.DBPath == "" {
+		c.DBPath = filepath.Join(c.DataDirectory, "data.db")
+	}
 }
 
 func panicIfError(err error, msg string, args ...interface{}) {
@@ -436,6 +443,8 @@ func configureDaemon(c *Config) daemon.Config {
 	dc.Visor.Config.GenesisSignature = c.GenesisSignature
 	dc.Visor.Config.GenesisTimestamp = c.GenesisTimestamp
 	dc.Visor.Config.GenesisCoinVolume = GenesisCoinVolume
+	dc.Visor.Config.DBPath = c.DBPath
+	dc.Visor.Config.Arbitrating = c.Arbitrating
 	return dc
 }
 
@@ -462,16 +471,6 @@ func Run(c *Config) {
 	logCfg.Format = logFormat
 	logCfg.Colors = c.ColorLog
 	logCfg.InitLogger()
-
-	// initLogging(c.LogLevel, c.ColorLog)
-
-	// start the block db.
-	blockdb.Start()
-	defer blockdb.Stop()
-
-	// start the transaction db.
-	// transactiondb.Start()
-	// defer transactiondb.Stop()
 
 	// If the user Ctrl-C's, shutdown properly
 	quit := make(chan int)
@@ -542,11 +541,11 @@ func Run(c *Config) {
 		}
 	}
 
-	if d.Visor.Visor.Blockchain.Head().Seq() < 2 {
+	if d.Visor.HeadBkSeq() < 2 {
 		time.Sleep(5)
 		tx := InitTransaction()
 		_ = tx
-		err, _ := d.Visor.Visor.InjectTxn(tx)
+		_, err := d.Visor.InjectTransaction(tx, d.Pool)
 		if err != nil {
 			//	log.Panic(err)
 		}
@@ -585,7 +584,7 @@ func main() {
 }
 
 //addresses for storage of coins
-var AddrList []string = []string{
+var AddrList = []string{
 	"Z1k6qej1yPoNAZmRVCGQW8t5zyW2b8EYSa",
 	"2BWPusJggEF8zHTdQyy62oTAre8m326kNTG",
 	"2abzMYGi6HFP8F8ZyUcdWY1fXTvgncLxxUg",
