@@ -22,7 +22,7 @@
 			"importpath": "github.com/skycoin/skycoin",
 			"repository": "https://github.com/skycoin/skycoin",
 			"vcs": "git",
-			"revision": "f983a51f22fd5c74c9ea0a6562f0d37c903ca926",
+			"revision": "5c043d69af847707c7d451803fde05421ed56bfa",
 			"branch": "master",
 			"notests": true
 		},
