@@ -3,7 +3,7 @@
     "productName": "Shellcoin2.0",
     "author": "shellcoin",
     "main": "src/electron-main.js",
-    "version": "0.16.0",
+    "version": "0.18.0",
     "description": "shellcoin wallet",
     "build": {
         "appId": "org.shanghaikuaibei.shellcoin",
