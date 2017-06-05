@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
@@ -23,6 +24,8 @@ import (
 )
 
 var (
+	// Version node version which will be set when build wallet by LDFLAGS
+	Version    = "0.0.0"
 	logger     = logging.MustGetLogger("main")
 	coinName   = "shellcoin"
 	logFormat  = "[shellcoin.%{module}:%{level}] %{message}"
@@ -134,8 +137,10 @@ type Config struct {
 	// to show up as a peer
 	ConnectTo string
 
-	DBPath      string
-	Arbitrating bool
+	DBPath       string
+	Arbitrating  bool
+	RPCThreadNum uint // rpc number
+	Logtofile    bool
 }
 
 func (c *Config) register() {
@@ -218,8 +223,8 @@ func (c *Config) register() {
 		"Run on localhost and only connect to localhost peers")
 	flag.BoolVar(&c.Arbitrating, "arbitrating", c.Arbitrating, "Run node in arbitrating mode")
 
-	//flag.StringVar(&c.AddressVersion, "address-version", c.AddressVersion,
-	//	"Wallet address version. Options are 'test' and 'main'")
+	flag.UintVar(&c.RPCThreadNum, "rpc-thread-num", 5, "rpc thread number")
+	flag.BoolVar(&c.Logtofile, "logtofile", false, "log to file")
 }
 
 var devConfig Config = Config{
@@ -448,6 +453,7 @@ func configureDaemon(c *Config) daemon.Config {
 	return dc
 }
 
+// Run starts the shellcoin node
 func Run(c *Config) {
 
 	c.GUIDirectory = util.ResolveResourceDirectory(c.GUIDirectory)
@@ -470,6 +476,20 @@ func Run(c *Config) {
 	logCfg := util.DevLogConfig(logModules)
 	logCfg.Format = logFormat
 	logCfg.Colors = c.ColorLog
+	if c.Logtofile {
+		// open log file
+		// logfile in ~/.skycoin/$time-$version.log
+		var logfmt = "2006-01-02-030405"
+		logfile := filepath.Join(c.DataDirectory, fmt.Sprintf("%s-v%s.log", time.Now().Format(logfmt), Version))
+		fd, err := os.OpenFile(logfile, os.O_RDWR|os.O_CREATE, 0666)
+		if err != nil {
+			panic(err)
+		}
+		defer fd.Close()
+		out := io.MultiWriter(os.Stdout, fd)
+		logCfg.Output = out
+	}
+
 	logCfg.InitLogger()
 
 	// If the user Ctrl-C's, shutdown properly
@@ -492,7 +512,7 @@ func Run(c *Config) {
 		go webrpc.Start(
 			fmt.Sprintf("%v:%v", c.RPCInterfaceAddr, c.RPCInterfacePort),
 			webrpc.ChanBuffSize(1000),
-			webrpc.ThreadNum(1000),
+			webrpc.ThreadNum(c.RPCThreadNum),
 			webrpc.Gateway(d.Gateway),
 			webrpc.Quit(closingC))
 	}
@@ -541,15 +561,15 @@ func Run(c *Config) {
 		}
 	}
 
-	if d.Visor.HeadBkSeq() < 2 {
-		time.Sleep(5)
-		tx := InitTransaction()
-		_ = tx
-		_, err := d.Visor.InjectTransaction(tx, d.Pool)
-		if err != nil {
-			//	log.Panic(err)
-		}
-	}
+	// if d.Visor.HeadBkSeq() < 2 {
+	// 	time.Sleep(5)
+	// 	tx := InitTransaction()
+	// 	_ = tx
+	// 	_, err := d.Visor.InjectTransaction(tx, d.Pool)
+	// 	if err != nil {
+	// 		//	log.Panic(err)
+	// 	}
+	// }
 
 	/*
 		//first transaction
