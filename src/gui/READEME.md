@@ -1,6 +1,10 @@
 # APIs document
 
+<<<<<<< HEAD
 Wallet apis service port is `7520`.
+=======
+Wallet apis service port is `6420`.
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
 
 ## Generate wallet seed
 
@@ -12,7 +16,11 @@ Method: GET
 example:
 
 ```bash
+<<<<<<< HEAD
 curl http://127.0.0.1:7520/wallet/newSeed
+=======
+curl http://127.0.0.1:6420/wallet/newSeed
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
 ```
 
 result:
@@ -35,7 +43,11 @@ Arguments:
 example:
 
 ```bash
+<<<<<<< HEAD
 curl -X POST http://127.0.0.1:7520/wallet/create
+=======
+curl -X POST http://127.0.0.1:6420/wallet/create
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
 ```
 
 result:
@@ -74,7 +86,11 @@ Arguments:
 example:
 
 ```bash
+<<<<<<< HEAD
 curl -X POST http://127.0.0.1:7520/wallet/newAddress?id=2017_05_09_d554.wlt
+=======
+curl -X POST http://127.0.0.1:6420/wallet/newAddress?id=2017_05_09_d554.wlt
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
 ```
 
 result:
@@ -97,7 +113,11 @@ Arguments:
 example:
 
 ```bash
+<<<<<<< HEAD
 curl http://127.0.0.1:7520/wallet/balance?id=2017_05_09_d554.wlt
+=======
+curl http://127.0.0.1:6420/wallet/balance?id=2017_05_09_d554.wlt
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
 ```
 
 result:
@@ -129,7 +149,11 @@ example:
 
 ```bash
 curl -X POST \
+<<<<<<< HEAD
   'http://127.0.0.1:7520/wallet/spend?id=2017_05_09_ea42.wlt&dst=2iVtHS5ye99Km5PonsB42No3pQRGEURmxyc&coins=1000000'
+=======
+  'http://127.0.0.1:6420/wallet/spend?id=2017_05_09_ea42.wlt&dst=2iVtHS5ye99Km5PonsB42No3pQRGEURmxyc&coins=1000000'
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
 ```
 
 result:
@@ -190,7 +214,11 @@ Arguments:
 example:
 
 ```bash
+<<<<<<< HEAD
 curl http://127.0.0.1:7520/balance\?addrs\=7cpQ7t3PZZXvjTst8G7Uvs7XH4LeM8fBPD,nu7eSpT6hr5P21uzw7bnbxm83B6ywSjHdq
+=======
+curl http://127.0.0.1:6420/balance\?addrs\=7cpQ7t3PZZXvjTst8G7Uvs7XH4LeM8fBPD,nu7eSpT6hr5P21uzw7bnbxm83B6ywSjHdq
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
 ```
 
 result:
@@ -219,7 +247,11 @@ Method: GET
 example:
 
 ```bash
+<<<<<<< HEAD
 curl http://127.0.0.1:7520/pendingTxs
+=======
+curl http://127.0.0.1:6420/pendingTxs
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
 ```
 
 result:
@@ -275,7 +307,11 @@ Arguments:
 example:
 
 ```bash
+<<<<<<< HEAD
 curl http://127.0.0.1:7520/transaction?txid=a6446654829a4a844add9f181949d12f8291fdd2c0fcb22200361e90e814e2d3
+=======
+curl http://127.0.0.1:6420/transaction?txid=a6446654829a4a844add9f181949d12f8291fdd2c0fcb22200361e90e814e2d3
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
 ```
 
 result:
@@ -323,7 +359,11 @@ Method: GET
 example:
 
 ```bash
+<<<<<<< HEAD
 curl http://127.0.0.1:7520/rawtx?txid=a6446654829a4a844add9f181949d12f8291fdd2c0fcb22200361e90e814e2d3
+=======
+curl http://127.0.0.1:6420/rawtx?txid=a6446654829a4a844add9f181949d12f8291fdd2c0fcb22200361e90e814e2d3
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
 ```
 
 result:
@@ -347,7 +387,11 @@ Body: {
 example:
 
 ```bash
+<<<<<<< HEAD
 curl -X POST http://127.0.0.1:7520/injectTransaction -H 'content-type: application/json' -d '{
+=======
+curl -X POST http://127.0.0.1:6420/injectTransaction -H 'content-type: application/json' -d '{
+>>>>>>> 91acd9b9b3095a813d8313c153da89337cfe41fd
     "rawtx":"dc0000000008b507528697b11340f5a3fcccbff031c487bad59d26c2bdaea0cd8a0199a1720100000017f36c9d8bce784df96a2d6848f1b7a8f5c890986846b7c53489eb310090b91143c98fd233830055b5959f60030b3ca08d95f22f6b96ba8c20e548d62b342b5e0001000000ec9cf2f6052bab24ec57847c72cfb377c06958a9e04a077d07b6dd5bf23ec106020000000072116096fe2207d857d18565e848b403807cd825c044840300000000330100000000000000575e472f8c5295e8fa644e9bc5e06ec10351c65f40420f000000000066020000000000000"
 }'
 ```
