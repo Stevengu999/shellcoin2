@@ -24,6 +24,7 @@ import (
 	"github.com/skycoin/skycoin/src/util/cert"
 	"github.com/skycoin/skycoin/src/util/file"
 	"github.com/skycoin/skycoin/src/util/logging"
+	"github.com/skycoin/skycoin/src/wallet"
 )
 
 var (
