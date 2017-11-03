@@ -24,12 +24,17 @@ import (
 	"github.com/skycoin/skycoin/src/util/cert"
 	"github.com/skycoin/skycoin/src/util/file"
 	"github.com/skycoin/skycoin/src/util/logging"
-	"github.com/skycoin/skycoin/src/wallet"
+	"github.com/skycoin/skycoin/src/visor"
 )
 
 var (
 	// Version node version which will be set when build wallet by LDFLAGS
-	Version    = "0.0.0"
+	Version = "0.20.3"
+	// Commit id
+	Commit = ""
+
+	help = false
+
 	logger     = logging.MustGetLogger("main")
 	coinName   = "shellcoin"
 	logFormat  = "[shellcoin.%{module}:%{level}] %{message}"
@@ -114,6 +119,8 @@ type Config struct {
 	ColorLog bool
 	// This is the value registered with flag, it is converted to LogLevel after parsing
 	LogLevel string
+	// Disable "Reply to ping", "Received pong" log messages
+	DisablePingPong bool
 
 	// Wallets
 	// Defaults to ${DataDirectory}/wallets/
@@ -147,6 +154,7 @@ type Config struct {
 }
 
 func (c *Config) register() {
+	flag.BoolVar(&help, "help", false, "Show help")
 	flag.BoolVar(&c.DisablePEX, "disable-pex", c.DisablePEX,
 		"disable PEX peer discovery")
 	flag.BoolVar(&c.DisableOutgoingConnections, "disable-outgoing",
@@ -198,6 +206,9 @@ func (c *Config) register() {
 		"Choices are: debug, info, notice, warning, error, critical")
 	flag.BoolVar(&c.ColorLog, "color-log", c.ColorLog,
 		"Add terminal colors to log output")
+	flag.BoolVar(&c.DisablePingPong, "no-ping-log", false,
+		`disable "reply to ping" and "received pong" log messages`)
+	flag.BoolVar(&c.Logtofile, "logtofile", false, "log to file")
 	flag.StringVar(&c.GUIDirectory, "gui-dir", c.GUIDirectory,
 		"static content directory for the html gui")
 
@@ -225,9 +236,6 @@ func (c *Config) register() {
 	flag.BoolVar(&c.LocalhostOnly, "localhost-only", c.LocalhostOnly,
 		"Run on localhost and only connect to localhost peers")
 	flag.BoolVar(&c.Arbitrating, "arbitrating", c.Arbitrating, "Run node in arbitrating mode")
-
-	flag.UintVar(&c.RPCThreadNum, "rpc-thread-num", 5, "rpc thread number")
-	flag.BoolVar(&c.Logtofile, "logtofile", false, "log to file")
 }
 
 var devConfig Config = Config{
@@ -302,6 +310,10 @@ var devConfig Config = Config{
 func (c *Config) Parse() {
 	c.register()
 	flag.Parse()
+	if help {
+		flag.Usage()
+		os.Exit(0)
+	}
 	c.postProcess()
 }
 
@@ -339,7 +351,7 @@ func (c *Config) postProcess() {
 	}
 
 	if c.WalletDirectory == "" {
-		c.WalletDirectory = filepath.Join(c.DataDirectory, "wallets/")
+		c.WalletDirectory = filepath.Join(c.DataDirectory, "wallets")
 	}
 
 	if c.DBPath == "" {
@@ -447,7 +459,6 @@ func initProfiling(httpProf, profileCPU bool, profileCPUFile string) {
 
 func configureDaemon(c *Config) daemon.Config {
 	//cipher.SetAddressVersion(c.AddressVersion)
-
 	dc := daemon.NewConfig()
 	dc.Peers.DataDirectory = c.DataDirectory
 	dc.Peers.Disabled = c.DisablePEX
@@ -459,6 +470,7 @@ func configureDaemon(c *Config) daemon.Config {
 	dc.Daemon.LocalhostOnly = c.LocalhostOnly
 	dc.Daemon.OutgoingMax = c.MaxConnections
 	dc.Daemon.DataDirectory = c.DataDirectory
+	dc.Daemon.LogPings = !c.DisablePingPong
 
 	daemon.DefaultConnections = DefaultConnections
 
@@ -478,6 +490,11 @@ func configureDaemon(c *Config) daemon.Config {
 	dc.Visor.Config.GenesisCoinVolume = GenesisCoinVolume
 	dc.Visor.Config.DBPath = c.DBPath
 	dc.Visor.Config.Arbitrating = c.Arbitrating
+	dc.Visor.Config.WalletDirectory = c.WalletDirectory
+	dc.Visor.Config.BuildInfo = visor.BuildInfo{
+		Version: Version,
+		Commit:  Commit,
+	}
 	return dc
 }
 
@@ -520,8 +537,6 @@ func Run(c *Config) {
 	// Watch for SIGUSR1
 	go catchDebug()
 
-	gui.InitWalletRPC(c.WalletDirectory, wallet.OptCoin("sc2"))
-
 	dconf := configureDaemon(c)
 	d, err := daemon.NewDaemon(dconf)
 	if err != nil {
@@ -538,15 +553,14 @@ func Run(c *Config) {
 	var rpc *webrpc.WebRPC
 	// start the webrpc
 	if c.RPCInterface {
-		rpc, err = webrpc.New(
-			fmt.Sprintf("%v:%v", c.RPCInterfaceAddr, c.RPCInterfacePort),
-			webrpc.ChanBuffSize(1000),
-			webrpc.ThreadNum(c.RPCThreadNum),
-			webrpc.Gateway(d.Gateway))
+		rpcAddr := fmt.Sprintf("%v:%v", c.RPCInterfaceAddr, c.RPCInterfacePort)
+		rpc, err := webrpc.New(rpcAddr, d.Gateway)
 		if err != nil {
 			logger.Error("%v", err)
 			return
 		}
+		rpc.ChanBuffSize = 1000
+		rpc.WorkerNum = c.RPCThreadNum
 
 		go func() {
 			errC <- rpc.Run()
@@ -636,7 +650,6 @@ func Run(c *Config) {
 	if rpc != nil {
 		rpc.Shutdown()
 	}
-
 	gui.Shutdown()
 	d.Shutdown()
 	closelog()
@@ -648,119 +661,27 @@ func main() {
 	Run(&devConfig)
 }
 
-//addresses for storage of coins
-var AddrList = []string{
-	"Z1k6qej1yPoNAZmRVCGQW8t5zyW2b8EYSa",
-	"2BWPusJggEF8zHTdQyy62oTAre8m326kNTG",
-	"2abzMYGi6HFP8F8ZyUcdWY1fXTvgncLxxUg",
-	"2cP8ed8C7ugK2BozeVnVhVfFQ1HL1tixsPq",
-	"yQ4FP8iRjN7fwLwi3RrJZaNJf63LNoijKo",
-	"2epqomKZVWGxaDpaZkwu9QHM9RaFsAHgziQ",
-	"SLKXabjERNatNZfrWQDzVvxJt2SSYMx7DN",
-	"xYS16WXoa7qoN6CCibmPtW938F7JiNYJmo",
-	"9u1jDCeK7WSVs1wuoQYK3GD3PqUGtTNLUz",
-	"2FbNyvNqMzEvrRrv4kcsp4GxLZQPWHzUwru",
-	"2Z5dMNPe9Dd5FPTWWwTsRfREwBf53wftz3G",
-	"2ZpN1NMvoM3brt1LiQbxSUT1nK14tiTKmjs",
-	"qGFwwYHJtYSH26Bg3E33Zi7EQXMj45ECU7",
-	"2Y6gK4992vHPJJ1cUQa7GmkHTophhqkfqNp",
-	"2Ur7H3NJ6uivPx4W1uuDhfeu92E7tXFgbbk",
-	"yX78JsBww6qRM9Cy6r1cMcM1cqqfvLB81G",
-	"2Wu7pUcSQVXBMF6iHT5GK1JRHToYc5VwEMU",
-	"sX8V7KE5XDgtFsxUTF8nJoXCAS4WG6qmdL",
-	"BMzo8uGGtTswKCLiUGQYQEC3TSgFUYxGUV",
-	"WYUGd1PJtFkjAtzFULcYcXwzM4RwD4Bohg",
-	"8D3QqVJ1hLhmwK9dH6CjK8j8PmzBZdFXKi",
-	"zZLbkWDxiZPvziLXiT8Bgir1bP94dGkSv8",
-	"cDAzgCAxKphwdhWB5ziSxrBzS8J3FxKrVX",
-	"W64hnPJ8h48CErFoAJDunC7FDTXCiDBYaU",
-	"rkTX8iDP4FbZHkomBze6UkHDmhvw54vrci",
-	"2i4iBDtiagR3jiegnmbiVZ1tkTp6vwVFjXF",
-	"wFCxPvzVBce1APxbFGgpPFnTN5cQUnLqEp",
-	"KLW1sJUTuGQcQATaMrkMeEzMhKqFE9SzrM",
-	"2zxjynmyjHwyA9CmtEpnKBUc2t3k7L7YxT",
-	"ZpcAH9SdsUfgPgJUt7kY5FdvSkxMAy7AmW",
-	"XV7YcAQujembG8pWksdjqraWfoGdpxUcfy",
-	"Exskppefm5J35ejwS7HQTRUtCKNacwbENc",
-	"Y7ngaBfePwGy4vpNgyxXcw6EdHkuNkLdh",
-	"2VW4y4MjEceMtkHkoPPC5DCVATZJJ4wFd61",
-	"2jF6FVDs3trWCg2AjdTGBbJbqBL1zo83aXV",
-	"eAdXVjvfwATdMsQNxWCwn9fmrjj4yV1gYk",
-	"JnuJTVDw2SBh559G4TKVdDSMZXgizBgAWX",
-	"2XjofbRTnCU5F5PFMErLmivfveCJj1PyyKX",
-	"jY7D2siBSdtCnW2qZQxtAHNMiVtzp72dpy",
-	"Pqho6tzNGn1oCjx67oJ64FjZsodcbCfZA8",
-	"2LxCTzJFfNCxDvkhq8cgfq4P6T2bK5qVxKh",
-	"Wf2ZE5NswFjSiMc4beFG3kG5jppMU77NA",
-	"7ThrKqp68NLgSCAvFq75CghNDCVzPEV8pb",
-	"2FXWH1yNkrpSm99uggshpAxyRxu4BDsLp43",
-	"2VcS5bRbATZRfyfGqxtdcVsCMnFcU5YRC5w",
-	"cAyxv5CRpUWqNZesjU4dsw9zsgp3wo1mzC",
-	"uxRrW927Thp9kBUqCCF5uGizQNYN9GJZBb",
-	"usSvw63y1HrHxYpksjBhcnrFSDQao619KN",
-	"urVo1mKQa4wZR79ViFeDfsBA1hmNRz4hgA",
-	"21wFQjVV8HvWtKcyA9gzb8rQeFLYUFRE5S1",
-	"2C8mNpRfEsAfjMYqc8DwqdzYz1XsWdX8Lpg",
-	"2SVd9pGm59rafUAc3i5fWUwiEvc9QDz7Cqd",
-	"ZRvUwGFJ58y5H9rwUEqJNdPEr4DiAjRgHm",
-	"H7a1oj4KvWKkGntnHh2uZoGyrvM3pJgGze",
-	"4YffwkMK5Fmxc5KcXKaQs1QJU9yLHijrrx",
-	"2TkyDHnoGJcLbdsNYFUwccm113GF8MMCETj",
-	"2CFTZWhHDEXwX1N1NRwNZ9bEErzw82SKNyx",
-	"Nxrs7pRYWGbxEByhZk14qJoJYbUuPgF1LD",
-	"2GbczQuUZe3CDt6fQEkmmYxruTZ2JW79uAs",
-	"2UoAuTGkA8xq6bh9Hs6KXNTLkD459THrxiy",
-	"q6w4yZbzLoNWmfq5MopSwPkzPJqrroWq8v",
-	"Ee6bq2Gmxp8m5aCX4jvG1yBPawLvTttGNX",
-	"2MSTLjxJm2oPLzQCYrbm1zkFR5xEnQeFi3h",
-	"27WRJ87b3DxEvmh8axkgEews8DYycjN91xm",
-	"29b2GCEQrM7vF7pngHKtvVrTXCL1DJU3s9Y",
-	"2NrKPH7UH3jhhEW7JVsExLpTtJQ6kYfcmw1",
-	"SWPF7b9d6KPn3XXiq6tdkoLcWTiPpTD7Ke",
-	"2eQf3cgtUVSpNScJjwNgoEyHuVXjao6GXw3",
-	"2Ltm64ZjNcaP85jNUgucpKNHZDcrnFmiyEk",
-	"WuRJen3KavvZxyKVaPHcUvJW6CtWT33iRp",
-	"pf4g5BXa3Scq5yRiX7redAP6c3up6BrysT",
-	"aGx9x1qMqNyxDVwD5PY7hQ1RaYCuTX6GX5",
-	"2hU1xk3Zy4NrfAKuB28ZtEbQNPum6pjjZ2b",
-	"21p72H7FJ1g3jMM178ozj1BjzsAnkKskYBm",
-	"5f3Rh5dPHGoV1z1kbWNApJVreQUAKaJiXz",
-	"wZJjmL184D1ZyfmHmfrZX8UKH6RyEYFMJ8",
-	"BxvJsGCV1n2G7PZEEE3ZQuUeSNAfszEcWB",
-	"2YUhuUVPJERRCo5d8KMZFRXE5XZdmHus547",
-	"tUq54Hdd4Pyp5vEXN7zC5fNk1UjyomgTae",
-	"A2vjGTqvXyTaopoUhiNiNyJKoRrXPRobSm",
-	"npfUWxQg42wWNXwYhUPAS76cDgVtm44H4n",
-	"gYuosHMTDoYTEgmUkYoDppZy1PjJRW5eyB",
-	"J45zxYi9UUUvCK5Pv51gHPH1a33FuPL2LJ",
-	"2LDfyyL9EL9gSe3aC5rM8EpMh4zn3BJWfk",
-	"2cH1VBMKSWW6WftBs7CGwLrWESTkxhc2xMX",
-	"tmEmVBTDxTpbGNwMdBJLTWrLn4VnpFphmZ",
-	"DjemT2f8iAwk7MnxMcpjy75urf1Vz5rgsV",
-	"2RRa36ELR8jDm8m5Mf6DS3tskMw1PknCxAz",
-	"cEKEgZyjjMR2mmnfFHgmFjAvVwmzeowiYg",
-	"A2ohw5ZgMHdsJpskEgd4pQny3DtH54Sfqi",
-	"2bFQnRXmFr3coS7v4tJh6AC4mfUJTTRVQME",
-	"PLsUxXTJJWKuZVnMxP3FYbnMk1DBxXyBoJ",
-	"n5fMHy77JrfQawvZ4SKfsiVkfvuN1YnCyQ",
-	"2f2Uu4BbbcWMX4qe1uFm8UgPsZkHsCB7t5U",
-	"W1SQKqzBDxVyVkkjTx1aEFFC1vDaf6cujg",
-	"Yf9D1EHKL5tjAiNjsVTcon5aARz7orb4mo",
-	"28eVNsyvCYx85qgwF9FYJLseKyoknDVig21",
-	"pYzWzz1oxFbdtg2UrXmebNvhmzhGbBt9Q",
-	"afAj8nZ92jBMnMNcDKyHSkAyBEHf65tW6n",
-	"2mB9UQbsiB4jFooBLYgnBk3hB8GnEEYVadz",
-}
-
+// InitTransaction creates the initialize transaction
 func InitTransaction() coin.Transaction {
 	var tx coin.Transaction
 
 	output := cipher.MustSHA256FromHex("00406e0f9f553e690b5c59bdf602391134fd1a853f004e56c7c1198ef25e1f6d")
 	tx.PushInput(output)
 
-	for i := 0; i < 100; i++ {
-		addr := cipher.MustDecodeBase58Address(AddrList[i])
-		tx.PushOutput(addr, 3e12, 1) // 10e6*10e6
+	addrs := visor.GetDistributionAddresses()
+
+	if len(addrs) != 100 {
+		log.Panic("Should have 100 distribution addresses")
+	}
+
+	// 1 million per address, measured in droplets
+	if visor.DistributionAddressInitialBalance != 1e6 {
+		log.Panic("visor.DistributionAddressInitialBalance expected to be 1e6*1e6")
+	}
+
+	for i := range addrs {
+		addr := cipher.MustDecodeBase58Address(addrs[i])
+		tx.PushOutput(addr, visor.DistributionAddressInitialBalance*1e6, 1)
 	}
 
 	if false {
