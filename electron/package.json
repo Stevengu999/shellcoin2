@@ -3,8 +3,9 @@
     "productName": "Shellcoin2.0",
     "author": "shellcoin",
     "main": "src/electron-main.js",
-    "version": "0.20.4",
+    "version": "0.21.1",
     "description": "shellcoin wallet",
+    "license": "MIT",
     "build": {
         "appId": "org.shanghaikuaibei.shellcoin",
         "nsis": {
@@ -21,6 +22,7 @@
             ]
         },
         "win": {
+            "target": "nsis",
             "extraFiles": [
                 {
                     "from": ".gox_output/${os}_${arch}",

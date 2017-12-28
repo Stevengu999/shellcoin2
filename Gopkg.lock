@@ -8,6 +8,12 @@
   version = "v1.3.0"
 
 [[projects]]
+  name = "github.com/cenkalti/backoff"
+  packages = ["."]
+  revision = "61153c768f31ee5f130071d08fc82b85208528de"
+  version = "v1.1.0"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -46,8 +52,7 @@
 [[projects]]
   name = "github.com/stretchr/testify"
   packages = ["assert","mock","require"]
-  revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
-  version = "v1.1.4"
+  revision = "2aa2c176b9dab406a6970f6a55f513e8a8c8b18f"
 
 [[projects]]
   name = "github.com/toqueteos/webbrowser"
@@ -69,6 +74,12 @@
 
 [[projects]]
   branch = "master"
+  name = "golang.org/x/net"
+  packages = ["context"]
+  revision = "a8b9294777976932365dabb6640cf1468d95c70f"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
   revision = "739734461d1c916b6c72a63d7efda2b27edb369f"
@@ -76,6 +87,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "68cb6495915c10bd84524c93b7aecf486258e24b5131661235d50ebd98babfe6"
+  inputs-digest = "bde909784fc2529c397f0e8c82bbfc2fd9c668876d15fe0d28b0b969900ddb57"
   solver-name = "gps-cdcl"
   solver-version = 1

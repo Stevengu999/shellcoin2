@@ -72,6 +72,10 @@ cd $GOPATH/src/github.com/ShanghaiKuaibei/shellcoin2
 make ARGS="--launch-browser=false" run
 ```
 
+### Docker image
+
+A Dockerfile is available at https://github.com/skycoin/docker-img
+
 ## API Documentation
 
 ### Wallet REST API
@@ -105,7 +109,11 @@ make test
 
 ### Formatting
 
-All `.go` source files should be formatted with `gofmt` or `goimports`.
+All `.go` source files should be formatted `goimports`.  You can do this with:
+
+```sh
+make format
+```
 
 ### Code Linting
 
