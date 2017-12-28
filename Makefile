@@ -22,11 +22,11 @@ PACKAGES = $(shell find ./src -type d -not -path '\./src' \
     							      -not -path '\./src/cipher/*' \
     							      -not -path '*/testdata*')
 
-run:  ## Run the skycoin node. To add arguments, do 'make ARGS="--foo" run'.
-	go run cmd/skycoin/skycoin.go --gui-dir="./${STATIC_DIR}" ${ARGS}
+run:  ## Run the shellcoin node. To add arguments, do 'make ARGS="--foo" run'.
+	go run cmd/shellcoin/shellcoin.go --gui-dir="./${STATIC_DIR}" ${ARGS}
 
-run-help: ## Show skycoin node help
-	@go run cmd/skycoin/skycoin.go --help
+run-help: ## Show shellcoin node help
+	@go run cmd/shellcoin/shellcoin.go --help
 
 test: ## Run tests
 	go test ./cmd/... -timeout=1m
@@ -51,8 +51,8 @@ install-linters: ## Install linters
 	gometalinter --vendored-linters --install
 
 format:  # Formats the code. Must have goimports installed (use make install-linters).
-	goimports -w -local github.com/skycoin/skycoin ./cmd
-	goimports -w -local github.com/skycoin/skycoin ./src
+	goimports -w -local github.com/ShanghaiKuaibei/shellcoin2 ./cmd
+	goimports -w -local github.com/ShanghaiKuaibei/shellcoin2 ./src
 
 release: ## Build electron apps, the builds are located in electron/release folder.
 	cd $(ELECTRON_DIR) && ./build.sh

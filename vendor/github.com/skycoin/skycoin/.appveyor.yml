@@ -2,7 +2,7 @@ image: Visual Studio 2017
 platform:
   - x64
 
-clone_folder: c:\gopath\src\github.com\ShanghaiKuaibei\shellcoin2
+clone_folder: c:\gopath\src\github.com\skycoin\skycoin
 
 branches:
   only:
@@ -34,27 +34,27 @@ build_script:
   - ps: cd ..
 
 after_build:
-  - ps: 7z a shellcoin.zip C:\gopath\src\github.com\ShanghaiKuaibei\shellcoin\electron\release\*
+  - ps: 7z a skycoin.zip C:\gopath\src\github.com\skycoin\skycoin\electron\release\*
   - ps: ls *.zip
 
 test: off
 
 artifacts:
-  - path: shellcoin.zip
+  - path: skycoin.zip
     name: published
 
-# deploy:
-#   provider: S3
-#   access_key_id: $(AWS_ACCESS_KEY_ID)
-#   secret_access_key: $(AWS_SECRET_ACCESS_KEY)
-#   bucket: $(AWS_BUCKET)
-#   region: $(AWS_REGION)
-#   folder: wallet
-#   artifact: published
-#   unzip: true
-#   set_public: true
-#   on:
-#     branch: master
+deploy:
+  provider: S3
+  access_key_id: $(AWS_ACCESS_KEY_ID)
+  secret_access_key: $(AWS_SECRET_ACCESS_KEY)
+  bucket: $(AWS_BUCKET)
+  region: $(AWS_REGION)
+  folder: wallet
+  artifact: published
+  unzip: true
+  set_public: true
+  on:
+    branch: master
 
 
 notifications:
